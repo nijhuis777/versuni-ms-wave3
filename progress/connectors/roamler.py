@@ -227,37 +227,56 @@ _JOBS_PAGE_SIZE = 200   # explicit large page size to avoid missing jobs
 def raw_jobs_page(page: int = 1) -> dict:
     """Fetch a single raw page from /v1/Jobs and return diagnostic info.
     Used by the dashboard debug expander to inspect the actual API response.
-    Returns: {status_code, url, keys (if dict), length (if list), first_item, raw_truncated}
     """
     base = _base_url()
     url  = f"{base}/v1/Jobs"
+    key  = _api_key()
+
+    # Key diagnostics (masked for security)
+    key_info = {
+        "key_length":     len(key),
+        "key_preview":    f"{key[:4]}…{key[-4:]}" if len(key) >= 8 else "(too short to preview)",
+        "key_has_spaces": key != key.strip(),
+        "key_has_newline": "\n" in key or "\r" in key,
+        "base_url":       base,
+    }
+
     try:
+        hdrs = get_headers()
         resp = requests.get(
             url,
-            headers=get_headers(),
+            headers=hdrs,
             params={"page": page, "take": _JOBS_PAGE_SIZE},
             timeout=30,
         )
         data = resp.json()
     except Exception as e:
-        return {"error": str(e), "url": url}
+        return {"error": str(e), **key_info}
 
     result = {
-        "status_code": resp.status_code,
-        "url": url,
-        "type": type(data).__name__,
+        "status_code":    resp.status_code,
+        "url":            url,
+        "response_type":  type(data).__name__,
+        **key_info,
     }
+
+    # Response content diagnostics
     if isinstance(data, list):
         result["length"] = len(data)
         result["first_item_keys"] = list(data[0].keys()) if data else []
     elif isinstance(data, dict):
         result["top_level_keys"] = list(data.keys())
-        # Show lengths of any list values to identify the jobs array key
         for k, v in data.items():
             if isinstance(v, list):
                 result[f"key_{k}_length"] = len(v)
-                if v:
-                    result[f"key_{k}_first_item_keys"] = list(v[0].keys()) if isinstance(v[0], dict) else str(v[0])[:80]
+                if v and isinstance(v[0], dict):
+                    result[f"key_{k}_first_item_keys"] = list(v[0].keys())
+
+    # Useful response headers
+    for h in ("x-ratelimit-remaining", "x-request-id", "www-authenticate", "content-type"):
+        if h in resp.headers:
+            result[f"resp_header_{h}"] = resp.headers[h]
+
     result["raw_truncated"] = str(data)[:500]
     return result
 
