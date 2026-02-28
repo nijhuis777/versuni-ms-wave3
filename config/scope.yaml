@@ -1,73 +1,146 @@
-# Wave III Scope — 8 markets
-# Update from: Mystery shopping 2026 - Inputs - updated all markets.xlsx
-# TODO: verify store counts and categories once Excel is parsed
+# Wave III Scope — 8 confirmed markets
+# Source: Mystery shopping 2026 - Inputs - updated all markets.xlsx
+# Last updated: 2026-02-28
+# Note: India, Indonesia, Korea appear in file but are NOT in Wave III scope
 
 markets:
-  DE:
-    name: Germany
-    platform: roamler
-    target_stores: 300
-    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer, Garlic_Press]
-  FR:
-    name: France
-    platform: roamler
-    target_stores: 250
-    categories: [FAEM, SAEM, Airfryer, Blender, Iron]
   NL:
     name: Netherlands
     platform: roamler
-    target_stores: 150
-    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer, Garlic_Press]
+    categories: [Airfryer, FAEM]
+    retailers_ms: [MSH, Expert, Coolblue]
+    retailers_survey: [MSH, Blokker, Coolblue, Bol.com, Expert, Krefel]
+
+  FR:
+    name: France
+    platform: roamler
+    categories: [Airfryer, FAEM]
+    retailers_ms: [Boulanger, Darty, Fnac, Auchan, Carrefour, Conforama, Hyper_U, But, Centre_E.Leclerc]
+    retailers_survey: [Boulanger, Darty, Fnac, Auchan, Carrefour, Conforama, Hyper_U, But]
+
+  DE:
+    name: Germany
+    platform: roamler
+    categories: [Airfryer, FAEM]
+    retailers_ms: [Media_Markt, Saturn, Expert, Euronics]
+    retailers_survey: [Conrad, Galaxus, Lidl, MediMax, Media_Markt, Saturn, Expert, Euronics]
+
   UK:
     name: United Kingdom
     platform: roamler
-    target_stores: 250
-    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer]
+    categories: [Airfryer, FAEM]
+    retailers_ms: [John_Lewis, Costco, Currys, Argos, Robert_Dyas]
+    retailers_survey: [Tesco, Asda, Currys, Argos, John_Lewis, Costco]
+
   TR:
     name: Turkey
     platform: roamler
-    target_stores: 250
-    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer, Garlic_Press]
+    categories: [FAEM, Handstick_VC_Wet_Dry, Handstick_VC, Steam_Iron]
+    retailers_ms: [MediaMarkt, Teknosa, Vatan, Evkur]
+    retailers_survey: [MediaMarkt, Teknosa, Vatan, Evkur, Migros, Evshop]
+
   AU:
     name: Australia
     platform: wiser
-    target_stores: 150
-    categories: [FAEM, Airfryer, Iron, Handheld_Steamer, Garlic_Press]
+    categories: [FAEM, Airfryer, All_in_One, Handheld_Steamer]
+    retailers_ms: [Harvey_Norman, Big_W, David_Jones, Myer, Good_Guys, JB_Hifi, Bing_Lee]
+    retailers_survey: [Harvey_Norman, Big_W, David_Jones, Myer, Good_Guys, JB_Hifi]
+
   BR:
     name: Brazil
     platform: pinion
-    target_stores: 400
-    categories: [Airfryer, Blender, FAEM]
+    categories: [FAEM, Airfryer]
+    retailers_ms: [Casas_Bahia, Fast_Shop, Sams_Club, Novo_Mundo, Ferreira_Costa, Macavi]
+    retailers_survey: [Casas_Bahia, Magazine_Luiza, Carrefour, Lojas_Americanas, Polishop, Fast_Shop]
+
   US:
     name: United States
     platform: wiser
-    target_stores: 400
-    categories: [FAEM, SAEM]
+    categories: [FAEM]
+    retailers_ms: [Williams_Sonoma, Crate_and_Barrel, Target]
+    retailers_survey: [Williams_Sonoma, Seattle_Coffee_Gear, Best_Buy, Crate_and_Barrel, Costco, Target]
 
+# All unique categories across all markets
 categories:
   FAEM:
     label: Fully Automatic Espresso Machines
     wave2_json: Versuni_FAEM.json
-  SAEM:
-    label: Semi-Automatic Espresso Machines
-    wave2_json: null  # to be added
+    markets: [NL, FR, DE, UK, TR, AU, BR, US]
+
   Airfryer:
     label: Airfryer
     wave2_json: null
-  Blender:
-    label: Blender
+    markets: [NL, FR, DE, UK, AU, BR]
+
+  Handstick_VC_Wet_Dry:
+    label: Handstick Vacuum Cleaner (Wet & Dry)
     wave2_json: null
-  Iron:
-    label: Iron (all types)
+    markets: [TR]
+
+  Handstick_VC:
+    label: Handstick Vacuum Cleaner
     wave2_json: null
+    markets: [TR]
+
+  Steam_Iron:
+    label: Steam Iron
+    wave2_json: null
+    markets: [TR]
+
+  All_in_One:
+    label: All-in-One Garment Care
+    wave2_json: null
+    markets: [AU]
+
   Handheld_Steamer:
     label: Handheld Steamer
     wave2_json: null
-  Garlic_Press:
-    label: Garlic Press
-    wave2_json: null
+    markets: [AU]
 
 kpis:
   KPI1: Availability
   KPI2: Visibility / Attractiveness
   KPI3: Brand Recommendation
+
+# KPI3 recommendation answer options (from Brand Recommendation_options sheet)
+kpi3_answer_options:
+  common:
+    - Experienced brand in this field
+    - Quality (less complaints / services)
+    - Warranty
+    - Price / Quality Ratio
+    - Innovative
+    - Newly launched product
+    - Bestseller
+    - Easy to use
+    - Easy to clean (device)
+    - Design
+  FAEM:
+    - Good variety of coffee drinks available
+    - Type of bean grinder
+    - Frothing quality
+  Airfryer:
+    - Several usage options (Frying, Baking, Grilling)
+    - Energy efficient
+    - Basket Volume
+    - Number of Baskets
+    - Number of dishes possible at the same time
+  Handstick_VC:
+    - Quick cleaning option
+    - Suction power
+    - Battery time / run-time
+  Handstick_VC_Wet_Dry:
+    - Vacuum and mop in one device
+    - Quick cleaning option
+    - Suction power
+    - Battery time / run-time
+    - Water tank size
+  Handheld_Steamer:
+    - Water tank size
+    - Easy to pack & take for travelling
+    - Strong steam output
+    - Heating Time
+    - No burns guaranteed
+
+# Potential future markets (present in scope file but NOT Wave III)
+future_markets_not_in_scope: [INDIA, INDONESIA, KOREA]

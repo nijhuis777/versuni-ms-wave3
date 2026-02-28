@@ -1,38 +1,136 @@
-# Brand configuration per category
-# These drive the brand lists in questionnaire answer options
+# Brand configuration per market × category
+# Source: Mystery shopping 2026 - Inputs - updated all markets.xlsx
+# Last updated: 2026-02-28
+# Structure: brands > {market} > {category} > versuni / competitors / top5
 
 brands:
-  FAEM:
-    versuni: [Philips]
-    competitors: [Delonghi, Siemens, Jura, Smeg, Miele]
-    other: true  # allow open-ended "other" answer
+  NL:
+    Airfryer:
+      versuni: [Philips]
+      competitors: [NINJA, INVENTUM, TEFAL, PRINCESS, TRISTAR, KITCHEN_BROTHER, RUSSELL_HOBBS, TOMADO, BERLINGER_HAUS]
+      top5: [NINJA, INVENTUM, TEFAL, PRINCESS, TRISTAR]
+      other: true
+      price_ranges_eur: ["75-150", "150-250", "250+"]
+    FAEM:
+      versuni: [Philips, Saeco]
+      competitors: [DELONGHI, JURA, SIEMENS, KRUPS, MELITTA, MIELE, BOSCH, SMEG, NIVONA]
+      top5: [DELONGHI, JURA, SIEMENS, KRUPS, MELITTA]
+      other: true
+      price_ranges_eur: ["<350", "351-700", ">700"]
+      notes: "Exclude Saeco from MSH and Expert"
 
-  SAEM:
-    versuni: [Philips]
-    competitors: [Delonghi, Siemens, Jura, Krups, Gaggia]
-    other: true
+  FR:
+    Airfryer:
+      versuni: [Philips]
+      competitors: [Ninja, Moulinex, Seb, Tefal, Medek, Kitchen_Cook]
+      top5: [Ninja, Moulinex, Seb, Tefal, Medek]
+      other: true
+      price_ranges_eur: ["Under 70", "70-130", "130+"]
+    FAEM:
+      versuni: [Philips]
+      competitors: [Delonghi, Krups, Ninja]
+      top5: [Delonghi, Krups, Ninja]
+      other: true
+      price_ranges_eur: ["Under 300", "300-500", "500+"]
 
-  Airfryer:
-    versuni: [Philips]
-    competitors: [Tefal, Ninja, Cosori, Samsung, Instant_Pot]
-    other: true
+  DE:
+    Airfryer:
+      versuni: [Philips]
+      competitors: [Ninja, Tefal, Cosori, Russell_Hobbs, Cecotec]
+      top5: [Ninja, Tefal, Cosori, Russell_Hobbs, Cecotec]
+      other: true
+      price_ranges_eur: ["<100", "100-200", ">200"]
+    FAEM:
+      versuni: [Philips, Saeco]
+      competitors: [DeLonghi, Siemens, Jura, Krups, Nivona]
+      top5: [DeLonghi, Siemens, Jura, Krups, Nivona]
+      other: true
+      price_ranges_eur: ["<450", "450-600", "600-750", "750-950", ">950"]
 
-  Blender:
-    versuni: [Philips]
-    competitors: [Bosch, KitchenAid, Tefal, NutriBullet, Kenwood]
-    other: true
+  UK:
+    Airfryer:
+      versuni: [Philips]
+      competitors: [NINJA, TOWER, TEFAL, SALTER, INSTANT, DAEWOO, BREVILLE, RUSSELL_HOBBS, POWERXL]
+      top5: [NINJA, TOWER, TEFAL, SALTER, INSTANT]
+      other: true
+      price_ranges_gbp: ["80-150", "150-200", "200-250"]
+    FAEM:
+      versuni: [Philips]
+      competitors: [DELONGHI, SAGE, SIEMENS, NINJA, MIELE, MELITTA, BOSCH, KRUPS, BEKO]
+      top5: [DELONGHI, SAGE, SIEMENS, NINJA, MIELE]
+      other: true
+      price_ranges_gbp: ["250-349", "350-499", "500-699"]
 
-  Iron:
-    versuni: [Philips, Azur]
-    competitors: [Tefal, Bosch, Rowenta, Braun, Russell_Hobbs]
-    other: true
+  TR:
+    FAEM:
+      versuni: [Philips]
+      competitors: [Nespresso, Siemens, DeLonghi, Grundig, Arcеlik, Melitta, Jura]
+      top5: [Nespresso, Siemens, DeLonghi, Grundig, Arcelik]
+      other: true
+      price_ranges_tl: ["<12000", "12000-25000", ">25000"]
+    Handstick_VC_Wet_Dry:
+      versuni: [Philips]
+      competitors: [Dyson, Fakir, Dreame, Roborock, Tineco, Kaercher, Tefal]
+      top5: [Dyson, Fakir, Dreame, Roborock, Tineco]
+      other: true
+      price_ranges_tl: [">10000", "10000-30000", "<30000"]
+    Handstick_VC:
+      versuni: [Philips]
+      competitors: [Dyson, Bosch, Tefal, Fakir, Arnica, Samsung, Electrolux]
+      top5: [Dyson, Bosch, Tefal, Fakir, Arnica]
+      other: true
+      price_ranges_tl: [">10000", "10000-30000", "<30000"]
+    Steam_Iron:
+      versuni: [Philips]
+      competitors: [Tefal, Arcelik, Arzum, Fakir]
+      top5: [Tefal, Arcelik, Arzum, Fakir]
+      other: true
+      price_ranges_tl: [">1000", "1000-3900", "<3900"]
 
-  Handheld_Steamer:
-    versuni: [Philips, Azur]
-    competitors: [Tefal, Rowenta, Bosch, Braun]
-    other: true
+  AU:
+    FAEM:
+      versuni: [Philips]
+      competitors: [Delonghi, Jura, SMEG, Kitchenaid]
+      top5: [Delonghi, Jura, SMEG, Kitchenaid]
+      other: true
+      price_ranges_aud: ["Below 699", "699-999", "1000-1499"]
+    Airfryer:
+      versuni: [Philips]
+      competitors: [Ninja, Tefal, Russell_Hobbs, Sunbeam, Instant_Pot, Braun, Healthy_Choice, Breville, NutriBullet]
+      top5: [Ninja, Tefal, Russell_Hobbs, Sunbeam, Instant_Pot]
+      other: true
+      price_ranges_aud: ["Below 149", "149-349", "349+"]
+    All_in_One:
+      versuni: [Philips]
+      competitors: [Tefal, Laurastar, Conair, Sunbeam, Breville, Kambrook]
+      top5: [Tefal, Laurastar, Conair, Sunbeam, Breville]
+      other: true
+      price_ranges_aud: ["Below 299", "299-599", "599+"]
+    Handheld_Steamer:
+      versuni: [Philips]
+      competitors: [Tefal, Sunbeam, Russell_Hobbs, Braun, Kambrook]
+      top5: [Tefal, Sunbeam, Russell_Hobbs, Braun, Kambrook]
+      other: true
+      price_ranges_aud: ["Below 69", "69-129", "129+"]
 
-  Garlic_Press:
-    versuni: [Philips]
-    competitors: [Bosch, Kenwood, KitchenAid]
-    other: true
+  BR:
+    FAEM:
+      versuni: [Philips_Walita, Saeco, Gaggia]
+      competitors: [DeLonghi, Oster, Wap, Ariete, Philco]
+      top5: [DeLonghi, Oster, Wap, Ariete, Philco]
+      other: true
+      price_ranges_brl: ["Below 4000", "4000-6000", "Above 6000"]
+    Airfryer:
+      versuni: [Philips_Walita]
+      competitors: [Mondial, Britania, Philco, Electrolux, Cadence, Oster, Elgin]
+      top5: [Mondial, Britania, Philco, Electrolux, Cadence]
+      other: true
+      price_ranges_brl: ["Below 400", "400-500", "Above 500"]
+
+  US:
+    FAEM:
+      versuni: [Philips]
+      competitors: [DeLonghi, Jura, KitchenAid, Ninja, Cafe, Terra_Kaffe, Chefman]
+      top5: [DeLonghi, Jura, KitchenAid, Ninja, Cafe]
+      other: true
+      price_ranges_usd: ["Below 800", "800-1300", "Above 1300"]
