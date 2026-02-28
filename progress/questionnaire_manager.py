@@ -81,6 +81,36 @@ def _extract_questions(data: dict | list) -> list[dict]:
     return questions
 
 
+def _format_answers(answers: list) -> list[str]:
+    """Extract human-readable labels from an answer list (handles str and dict variants)."""
+    labels = []
+    for a in (answers or []):
+        if isinstance(a, str):
+            labels.append(a)
+        elif isinstance(a, dict):
+            label = (
+                a.get("title") or a.get("Title") or a.get("label") or
+                a.get("Label") or a.get("text") or a.get("value") or
+                a.get("name") or str(a)
+            )
+            labels.append(str(label))
+    return labels
+
+
+def _render_question_card(q: dict, index: int | str = "") -> None:
+    """Render one question with its full text and answer options."""
+    ans_labels = _format_answers(q["answers"])
+    type_badge = f"  `{q['type']}`" if q["type"] else ""
+    prefix = f"**{index}.** " if index != "" else ""
+    st.markdown(f"{prefix}`{q['id']}`{type_badge}")
+    st.markdown(q["title"] if q["title"] else "_No question text found_")
+    if ans_labels:
+        st.markdown(
+            "\n".join(f"&nbsp;&nbsp;&nbsp;&nbsp;○ {a}" for a in ans_labels),
+            unsafe_allow_html=True,
+        )
+
+
 def _questions_index(questions: list[dict]) -> dict[str, dict]:
     return {q["id"]: q for q in questions if q["id"]}
 
@@ -110,10 +140,10 @@ def _render_diff(master_questions: list[dict], market_questions: list[dict],
                     c1, c2 = st.columns(2)
                     with c1:
                         st.caption("Master")
-                        st.json(m_q["_raw"], expanded=False)
+                        _render_question_card(m_q, "")
                     with c2:
                         st.caption(market_name)
-                        st.json(mk_q["_raw"], expanded=False)
+                        _render_question_card(mk_q, "")
             else:
                 changed += 1
                 with st.expander(f"⚠️ {qid}  —  DIFFERS", expanded=True):
@@ -123,23 +153,43 @@ def _render_diff(master_questions: list[dict], market_questions: list[dict],
                         if not same_title:
                             st.markdown(
                                 f"<span style='background:#FFF3CD;padding:2px 4px;"
-                                f"border-radius:3px'>{m_q['title']}</span>",
+                                f"border-radius:3px;display:block'>{m_q['title']}</span>",
                                 unsafe_allow_html=True,
                             )
                         else:
-                            st.write(m_q["title"])
-                        st.json(m_q["_raw"], expanded=False)
+                            st.markdown(m_q["title"])
+                        m_ans = _format_answers(m_q["answers"])
+                        if m_ans:
+                            ans_bg = "background:#FFF3CD;" if not same_ans else ""
+                            st.markdown(
+                                "\n".join(
+                                    f"<span style='{ans_bg}display:inline-block'>"
+                                    f"&nbsp;&nbsp;○ {a}</span>"
+                                    for a in m_ans
+                                ),
+                                unsafe_allow_html=True,
+                            )
                     with c2:
                         st.caption(f"**{market_name}**")
                         if not same_title:
                             st.markdown(
                                 f"<span style='background:#FFE0B2;padding:2px 4px;"
-                                f"border-radius:3px'>{mk_q['title']}</span>",
+                                f"border-radius:3px;display:block'>{mk_q['title']}</span>",
                                 unsafe_allow_html=True,
                             )
                         else:
-                            st.write(mk_q["title"])
-                        st.json(mk_q["_raw"], expanded=False)
+                            st.markdown(mk_q["title"])
+                        mk_ans = _format_answers(mk_q["answers"])
+                        if mk_ans:
+                            ans_bg = "background:#FFE0B2;" if not same_ans else ""
+                            st.markdown(
+                                "\n".join(
+                                    f"<span style='{ans_bg}display:inline-block'>"
+                                    f"&nbsp;&nbsp;○ {a}</span>"
+                                    for a in mk_ans
+                                ),
+                                unsafe_allow_html=True,
+                            )
 
         elif m_q and not mk_q:
             missing += 1
@@ -211,11 +261,15 @@ def render_questionnaire_tab() -> None:
                 parsed = json.loads(raw_bytes)
                 questions = _extract_questions(parsed)
                 st.success(f"Parsed: **{len(questions)} questions** detected.")
-                with st.expander("Preview questions"):
-                    for q in questions[:10]:
-                        st.write(f"• `{q['id']}` — {q['title'][:80]}")
-                    if len(questions) > 10:
-                        st.caption(f"… and {len(questions)-10} more")
+                with st.expander(f"Preview all {len(questions)} questions", expanded=False):
+                    for i, q in enumerate(questions, start=1):
+                        _render_question_card(q, i)
+                        if i < len(questions):
+                            st.markdown(
+                                "<hr style='margin:6px 0;border:none;"
+                                "border-top:1px solid #eee'>",
+                                unsafe_allow_html=True,
+                            )
 
                 label = "master" if is_master else up_market
                 if st.button(f"💾 Save  {up_category} / {label}  to repo",
