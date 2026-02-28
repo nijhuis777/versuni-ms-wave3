@@ -15,6 +15,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from dashboard.auth import require_password
+from dashboard.branding import render_header, inject_css, ROAMLER_ORANGE
 
 # ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -24,6 +25,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 require_password()
+inject_css()
 
 VERSUNI_BLUE   = "#003087"
 VERSUNI_LIGHT  = "#0075BE"
@@ -99,8 +101,12 @@ def _demo_data() -> pd.DataFrame:
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 def sidebar_filters(df: pd.DataFrame):
-    st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Philips_wordmark.svg/320px-Philips_wordmark.svg.png", width=140)
-    st.sidebar.title("Filters")
+    st.sidebar.markdown(
+        f"<div style='color:#FF6738;font-weight:700;font-size:0.85rem;"
+        f"text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px'>"
+        f"🔍 Filters</div>",
+        unsafe_allow_html=True,
+    )
 
     markets = st.sidebar.multiselect(
         "Market", options=sorted(df["market_name"].unique()),
@@ -156,8 +162,8 @@ def main():
     if retailer != "All":
         filtered = filtered[filtered["retailer"] == retailer]
 
-    # ─── Page title ───────────────────────────────────────────────────────────
-    st.title("🔍 Versuni Mystery Shopping — Wave III")
+    # ─── Page header ──────────────────────────────────────────────────────────
+    render_header("Wave III — Results Dashboard")
     st.caption(f"n = {len(filtered):,} visits · {filtered['market'].nunique()} markets · {filtered['category'].nunique()} categories")
 
     # ─── KPI summary gauges ───────────────────────────────────────────────────

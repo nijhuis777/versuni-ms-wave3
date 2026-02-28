@@ -11,29 +11,45 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = os.getenv("PINION_API_BASE_URL", "")
-API_KEY  = os.getenv("PINION_API_KEY", "")
+
+def _get_secret(key: str, default: str = "") -> str:
+    val = os.getenv(key, "")
+    if val:
+        return val
+    try:
+        import streamlit as st
+        return str(st.secrets.get(key, default))
+    except Exception:
+        return default
+
+
+def is_configured() -> bool:
+    return bool(_get_secret("PINION_API_KEY") and _get_secret("PINION_API_BASE_URL"))
 
 
 def get_headers() -> dict:
+    api_key = _get_secret("PINION_API_KEY")
     return {
-        "Authorization": f"Bearer {API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
 
-def get_progress() -> list[dict]:
+def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
     """
     Returns unified progress rows for Pinion markets (BR).
     Falls back to stub data if API not yet configured.
+    date_from / date_to accepted for interface consistency; used when API supports it.
     """
-    if not API_KEY or not BASE_URL:
+    api_key = _get_secret("PINION_API_KEY")
+    base_url = _get_secret("PINION_API_BASE_URL")
+    if not api_key or not base_url:
         return _stub_data()
 
     rows = []
     try:
         resp = requests.get(
-            f"{BASE_URL}/api/v1/projects/versuni/progress",
+            f"{base_url}/api/v1/projects/versuni/progress",
             headers=get_headers(),
             timeout=30,
         )
@@ -94,5 +110,5 @@ def _stub_data() -> list[dict]:
          "target": 0, "completed": 0, "pct": 0,
          "last_updated": datetime.utcnow().isoformat(),
          "status": "pending", "note": "Awaiting Pinion API credentials"}
-        for c in ["Airfryer", "Blender", "FAEM"]
+        for c in ["FAEM", "Airfryer"]
     ]

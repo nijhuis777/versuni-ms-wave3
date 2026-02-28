@@ -1,0 +1,49 @@
+# Wave III Visit Targets — per market / category
+# ─────────────────────────────────────────────────────────────────────────────
+# Edit these numbers to match your agreed fieldwork plan.
+# In the tracker dashboard you can also override them live in the sidebar.
+#
+# Categories must match what the platform API returns:
+#   Roamler: FAEM, Airfryer, Handstick_VC, Steam_Iron, Handheld_Steamer
+#   Wiser:   FAEM, Airfryer, All_in_One, Handheld_Steamer
+#   Pinion:  FAEM, Airfryer
+#
+# Set to 0 = target not yet agreed (shown as "n/a" in dashboard)
+
+targets:
+  # ── Roamler markets ────────────────────────────────────────────────────────
+  NL:
+    Airfryer: 0
+    FAEM: 0
+
+  FR:
+    Airfryer: 0
+    FAEM: 0
+
+  DE:
+    Airfryer: 0
+    FAEM: 0
+
+  UK:
+    Airfryer: 0
+    FAEM: 0
+
+  TR:
+    FAEM: 0
+    Handstick_VC: 0
+    Steam_Iron: 0
+
+  # ── Wiser markets ──────────────────────────────────────────────────────────
+  AU:
+    FAEM: 0
+    Airfryer: 0
+    All_in_One: 0
+    Handheld_Steamer: 0
+
+  US:
+    FAEM: 0
+
+  # ── Pinion markets ─────────────────────────────────────────────────────────
+  BR:
+    FAEM: 0
+    Airfryer: 0

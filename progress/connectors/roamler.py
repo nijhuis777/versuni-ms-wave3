@@ -5,7 +5,7 @@ Fetches fieldwork progress and submission data.
 Supports date-range filtering so 2025 Wave II data can be used
 as a dashboard preview before Wave III fieldwork begins.
 
-Date filter is controlled via .env:
+Date filter is controlled via .env or Streamlit secrets:
   ROAMLER_DATE_FROM=2025-01-01   (use 2025 data for preview)
   ROAMLER_DATE_TO=2025-12-31
   -- or for live Wave III --
@@ -20,23 +20,53 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL  = os.getenv("ROAMLER_API_BASE_URL", "https://api-customer.roamler.com")
-API_KEY   = os.getenv("ROAMLER_API_KEY", "")
-
-# Date range filter — default to Wave III window, override to 2025 for preview
-DATE_FROM = os.getenv("ROAMLER_DATE_FROM", "2026-03-09")
-DATE_TO   = os.getenv("ROAMLER_DATE_TO",   "2026-06-30")
-
 ROAMLER_MARKETS = ["DE", "FR", "NL", "UK", "TR"]
 
 CATEGORY_KEYWORDS = {
     "faem": "FAEM", "floorcare": "FAEM", "floor care": "FAEM",
     "airfryer": "Airfryer", "air fryer": "Airfryer",
+    "wet": "Handstick_VC",      # "wet & dry" — checked before plain "handstick"
     "handstick": "Handstick_VC", "hand stick": "Handstick_VC",
     "steam iron": "Steam_Iron", "steamer": "Handheld_Steamer",
     "all-in-one": "All_in_One", "all in one": "All_in_One",
 }
 
+
+# ─── Config helpers (lazy — read at call time, not import time) ───────────────
+
+def _get_secret(key: str, default: str = "") -> str:
+    """Read a secret from env var, then Streamlit secrets as fallback.
+
+    Module-level os.getenv() fails on Streamlit Cloud when env vars are
+    injected after the module is imported. This function reads fresh each call.
+    """
+    val = os.getenv(key, "")
+    if val:
+        return val
+    try:
+        import streamlit as st
+        return str(st.secrets.get(key, default))
+    except Exception:
+        return default
+
+
+def _base_url() -> str:
+    return _get_secret("ROAMLER_API_BASE_URL", "https://api-customer.roamler.com")
+
+
+def _api_key() -> str:
+    return _get_secret("ROAMLER_API_KEY", "")
+
+
+def get_headers() -> dict:
+    return {"X-Roamler-Api-Key": _api_key()}
+
+
+def is_configured() -> bool:
+    return bool(_api_key())
+
+
+# ─── Parsing helpers ──────────────────────────────────────────────────────────
 
 def _parse_market(job: dict) -> str:
     """Extract 2-letter market code.
@@ -81,28 +111,22 @@ def _job_id(job: dict) -> str:
     return str(job.get("id") or job.get("Id") or job.get("jobId") or "")
 
 
-def get_headers() -> dict:
-    return {"X-Roamler-Api-Key": API_KEY}
-
-
-def is_configured() -> bool:
-    return bool(API_KEY and BASE_URL)
-
+# ─── API calls ────────────────────────────────────────────────────────────────
 
 def fetch_all_jobs() -> list[dict]:
     """Fetch all Roamler jobs (paginated)."""
     results = []
     page = 0
+    base = _base_url()
     while True:
         resp = requests.get(
-            f"{BASE_URL}/v1/Jobs",
+            f"{base}/v1/Jobs",
             headers=get_headers(),
             params={"page": page},
             timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
-        # Response may be a list or {"jobs": [...]}
         batch = data if isinstance(data, list) else data.get("jobs", data.get("Jobs", []))
         results.extend(batch)
         if len(batch) < 50:
@@ -111,13 +135,19 @@ def fetch_all_jobs() -> list[dict]:
     return results
 
 
-def fetch_submissions(job_id: str, date_from: str = DATE_FROM, date_to: str = DATE_TO) -> list[dict]:
+def fetch_submissions(job_id: str, date_from: str = None, date_to: str = None) -> list[dict]:
     """Fetch all submissions for a single job within the date window."""
+    if date_from is None:
+        date_from = _get_secret("ROAMLER_DATE_FROM", "2026-03-09")
+    if date_to is None:
+        date_to = _get_secret("ROAMLER_DATE_TO", "2026-06-30")
+
     results = []
     page = 1
+    base = _base_url()
     while True:
         resp = requests.get(
-            f"{BASE_URL}/v1/Jobs/{job_id}/Submissions",
+            f"{base}/v1/Jobs/{job_id}/Submissions",
             headers=get_headers(),
             params={
                 "fromDate": f"{date_from}T00:00:00",
@@ -137,12 +167,17 @@ def fetch_submissions(job_id: str, date_from: str = DATE_FROM, date_to: str = DA
     return results
 
 
-def pull_all_submissions(date_from: str = DATE_FROM, date_to: str = DATE_TO) -> list[dict]:
+def pull_all_submissions(date_from: str = None, date_to: str = None) -> list[dict]:
     """
     Pull all approved submissions across all jobs in the date window.
     Used by the ETL pipeline to build the master dataset.
     Returns flat list of submission dicts.
     """
+    if date_from is None:
+        date_from = _get_secret("ROAMLER_DATE_FROM", "2026-03-09")
+    if date_to is None:
+        date_to = _get_secret("ROAMLER_DATE_TO", "2026-06-30")
+
     if not is_configured():
         return []
 
@@ -165,11 +200,16 @@ def pull_all_submissions(date_from: str = DATE_FROM, date_to: str = DATE_TO) -> 
     return all_submissions
 
 
-def get_progress(date_from: str = DATE_FROM, date_to: str = DATE_TO) -> list[dict]:
+def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
     """
     Returns unified progress rows for all Roamler markets.
     Each row: {market, category, platform, target, completed, pct, last_updated}
     """
+    if date_from is None:
+        date_from = _get_secret("ROAMLER_DATE_FROM", "2026-03-09")
+    if date_to is None:
+        date_to = _get_secret("ROAMLER_DATE_TO", "2026-06-30")
+
     if not is_configured():
         return _stub_data()
 
@@ -192,9 +232,9 @@ def get_progress(date_from: str = DATE_FROM, date_to: str = DATE_TO) -> list[dic
                 "market": market,
                 "category": category,
                 "platform": "roamler",
-                "target": 0,       # Roamler API has no target field; set from scope config if needed
+                "target": 0,       # No target in API — merged from targets.yaml in tracker
                 "completed": completed,
-                "pct": 0,          # Can't compute % without target
+                "pct": 0,          # Recomputed after targets are merged in tracker
                 "last_updated": datetime.utcnow().isoformat(),
                 "status": "complete" if completed > 0 else "pending",
                 "date_from": date_from,
