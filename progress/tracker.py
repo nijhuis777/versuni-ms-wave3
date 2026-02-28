@@ -81,6 +81,16 @@ def load_targets_from_file() -> pd.DataFrame:
     return pd.DataFrame(rows) if rows else pd.DataFrame(columns=["market", "category", "target"])
 
 
+def save_targets_to_file(new_targets: pd.DataFrame) -> None:
+    """Merge new targets into config/targets.yaml and persist."""
+    targets_file = CONFIG_DIR / "targets.yaml"
+    existing = yaml.safe_load(targets_file.read_text()) if targets_file.exists() else {}
+    data = existing.get("targets", {})
+    for _, row in new_targets.iterrows():
+        data.setdefault(row["market"], {})[row["category"]] = int(row["target"])
+    targets_file.write_text(yaml.dump({"targets": data}, default_flow_style=False))
+
+
 # ─── Data loading ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=300)  # refresh every 5 minutes
 def load_all_progress(date_from: str, date_to: str) -> pd.DataFrame:
@@ -107,24 +117,6 @@ with st.sidebar:
     date_from_str = d_from.strftime("%Y-%m-%d")
     date_to_str   = d_to.strftime("%Y-%m-%d")
     st.caption("Switch to 2026-03-09 → 2026-06-30 for live Wave III data.")
-
-    st.divider()
-
-    st.subheader("🎯 Visit Targets")
-    st.caption("Edit below or update `config/targets.yaml`. Changes apply this session only.")
-    default_targets = load_targets_from_file()
-    targets_df = st.data_editor(
-        default_targets,
-        num_rows="dynamic",
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "market":   st.column_config.TextColumn("Market", width="small"),
-            "category": st.column_config.TextColumn("Category"),
-            "target":   st.column_config.NumberColumn("Target", min_value=0, step=1),
-        },
-        key="targets_editor",
-    )
 
     st.divider()
 
@@ -172,6 +164,7 @@ except Exception as _load_err:
     ])
 
 # ─── Merge targets ────────────────────────────────────────────────────────────
+targets_df = load_targets_from_file()
 if not targets_df.empty and "target" in targets_df.columns:
     df = df.drop(columns=["target"], errors="ignore")
     df = df.merge(
@@ -265,7 +258,7 @@ with tab_progress:
             plot_bgcolor="white",
             paper_bgcolor="white",
             font=dict(family="Inter, sans-serif", color="#444", size=11),
-            margin=dict(l=4, r=110, t=4, b=4),
+            margin=dict(l=4, r=80, t=4, b=4),
             legend=dict(
                 orientation="h",
                 yanchor="bottom", y=1.01,
@@ -343,7 +336,7 @@ with tab_progress:
             marker_line_width=0,
             textfont=dict(size=10),
         )
-        fig_bar = _chart_layout(fig_bar, height=max(180, len(chart_df) * 36))
+        fig_bar = _chart_layout(fig_bar, height=max(180, len(chart_df) * 28))
         fig_bar.update_layout(xaxis_range=[0, x_max], showlegend=True)
         st.plotly_chart(fig_bar, use_container_width=True)
     else:
@@ -361,6 +354,93 @@ with tab_progress:
             use_container_width=True,
             hide_index=True,
         )
+
+    # ─── Chat-based target setup ───────────────────────────────────────────────
+    _missing = (
+        df[df["target"] == 0][["market", "category"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+    if not _missing.empty:
+        st.divider()
+        st.markdown("#### 🎯 Set Missing Targets")
+
+        # Initialise session state on first render or after a rerun clears old state
+        if "targets_chat_queue" not in st.session_state:
+            st.session_state.targets_chat_queue = list(
+                _missing.itertuples(index=False, name=None)
+            )
+            st.session_state.targets_chat_log = []
+            # Seed the first bot question
+            first_market, first_cat = st.session_state.targets_chat_queue[0]
+            n_missing = len(st.session_state.targets_chat_queue)
+            st.session_state.targets_chat_log.append({
+                "role": "assistant",
+                "content": (
+                    f"I see **{n_missing}** market × category combination(s) without a target. "
+                    f"What is the target for **{first_market} / {first_cat}**?"
+                ),
+            })
+
+        # Render conversation history
+        for msg in st.session_state.targets_chat_log:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        # Input — only shown while there are items in the queue
+        if st.session_state.targets_chat_queue:
+            user_input = st.chat_input("Enter a number…", key="targets_chat_input")
+            if user_input is not None:
+                st.session_state.targets_chat_log.append(
+                    {"role": "user", "content": user_input}
+                )
+                try:
+                    value = int(user_input.strip())
+                except ValueError:
+                    st.session_state.targets_chat_log.append({
+                        "role": "assistant",
+                        "content": f"⚠️ **'{user_input}'** is not a valid number — please enter a whole number.",
+                    })
+                    st.rerun()
+
+                # Pop the current item and record the answer
+                cur_market, cur_cat = st.session_state.targets_chat_queue.pop(0)
+                _new_row = pd.DataFrame([{"market": cur_market, "category": cur_cat, "target": value}])
+                save_targets_to_file(_new_row)
+
+                # Also commit via GitHub storage if configured
+                try:
+                    from progress import github_storage
+                    if github_storage.is_configured():
+                        targets_file = CONFIG_DIR / "targets.yaml"
+                        github_storage.commit_file(
+                            "config/targets.yaml",
+                            targets_file.read_bytes(),
+                            f"targets: set {cur_market}/{cur_cat} = {value}",
+                        )
+                except Exception:
+                    pass  # GitHub commit is best-effort
+
+                if st.session_state.targets_chat_queue:
+                    next_market, next_cat = st.session_state.targets_chat_queue[0]
+                    st.session_state.targets_chat_log.append({
+                        "role": "assistant",
+                        "content": (
+                            f"Got it — **{cur_market} / {cur_cat}** = {value}. "
+                            f"Next: what is the target for **{next_market} / {next_cat}**?"
+                        ),
+                    })
+                else:
+                    st.session_state.targets_chat_log.append({
+                        "role": "assistant",
+                        "content": "All targets set! Saving… ✅",
+                    })
+                    # Clear queue so chat disappears after rerun
+                    del st.session_state["targets_chat_queue"]
+                    del st.session_state["targets_chat_log"]
+                    st.cache_data.clear()
+
+                st.rerun()
 
     # ─── Roamler job diagnostics ───────────────────────────────────────────────
     with st.expander("🔍 Roamler job diagnostics (debug)", expanded=False):
@@ -386,6 +466,15 @@ with tab_progress:
                         use_container_width=True,
                         hide_index=True,
                     )
+
+                    # ── Raw API response inspector ─────────────────────────
+                    st.divider()
+                    st.caption("**Raw API response** — shows the exact JSON /v1/Jobs returns. "
+                               "Use this when 0 jobs are fetched to find the right response key.")
+                    if st.button("🔬 Inspect raw /v1/Jobs response", key="raw_api_test"):
+                        with st.spinner("Calling /v1/Jobs page 1…"):
+                            raw = roamler.raw_jobs_page(page=1)
+                        st.json(raw)
 
                     # ── Raw get_progress() diagnostic ─────────────────────
                     st.divider()
