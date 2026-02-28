@@ -341,9 +341,10 @@ def fetch_all_jobs() -> list[dict]:
 def fetch_submissions(job_id: str, date_from: str = None, date_to: str = None) -> list[dict]:
     """Fetch submissions for a single job within the date window.
 
-    Called WITHOUT page/take params — those break the Roamler API (same
-    as on the /Jobs endpoint).  The API returns up to 50 results by
-    default; a separate diagnostic tests which params are safe to use.
+    The Submissions endpoint supports ``take`` up to ~500.  Values above
+    that (e.g. 10 000) cause the API to return an unparseable response.
+    We use take=500 which comfortably covers the largest jobs (~350).
+    If a job ever exceeds 500 we paginate with page=2, page=3, etc.
     """
     if date_from is None:
         date_from = _get_secret("ROAMLER_DATE_FROM", "2026-03-09")
@@ -351,18 +352,41 @@ def fetch_submissions(job_id: str, date_from: str = None, date_to: str = None) -
         date_to = _get_secret("ROAMLER_DATE_TO", "2026-06-30")
 
     base = _base_url()
+    hdrs = get_headers()
+    url = f"{base}/v1/Jobs/{job_id}/Submissions"
+    date_params = {
+        "fromDate": f"{date_from}T00:00:00",
+        "toDate": f"{date_to}T23:59:59",
+    }
+
+    # First page — take=500 covers most jobs in a single call
     resp = requests.get(
-        f"{base}/v1/Jobs/{job_id}/Submissions",
-        headers=get_headers(),
-        params={
-            "fromDate": f"{date_from}T00:00:00",
-            "toDate": f"{date_to}T23:59:59",
-        },
+        url, headers=hdrs,
+        params={**date_params, "take": 500},
         timeout=60,
     )
     resp.raise_for_status()
     data = resp.json()
-    return data if isinstance(data, list) else data.get("submissions", data.get("Submissions", []))
+    results = data if isinstance(data, list) else data.get("submissions", data.get("Submissions", []))
+
+    # Check if there are more than 500 — paginate if needed
+    total = int(resp.headers.get("X-Paging-TotalRecordCount", len(results)))
+    page = 2
+    while len(results) < total:
+        resp = requests.get(
+            url, headers=hdrs,
+            params={**date_params, "take": 500, "page": page},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        batch = data if isinstance(data, list) else data.get("submissions", data.get("Submissions", []))
+        if not batch:
+            break  # safety valve
+        results.extend(batch)
+        page += 1
+
+    return results
 
 
 def pull_all_submissions(date_from: str = None, date_to: str = None) -> list[dict]:
