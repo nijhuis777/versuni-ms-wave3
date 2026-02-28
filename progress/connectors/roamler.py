@@ -225,60 +225,54 @@ _JOBS_PAGE_SIZE = 200   # explicit large page size to avoid missing jobs
 
 
 def raw_jobs_page(page: int = 1) -> dict:
-    """Fetch a single raw page from /v1/Jobs and return diagnostic info.
-    Used by the dashboard debug expander to inspect the actual API response.
+    """Fetch /v1/Jobs with multiple parameter combinations to diagnose issues.
+    Tries: no params, page-only, page+take=50, page+take=200.
     """
     base = _base_url()
     url  = f"{base}/v1/Jobs"
     key  = _api_key()
+    hdrs = get_headers()
 
-    # Key diagnostics (masked for security)
     key_info = {
         "key_length":     len(key),
-        "key_preview":    f"{key[:4]}…{key[-4:]}" if len(key) >= 8 else "(too short to preview)",
+        "key_preview":    f"{key[:4]}…{key[-4:]}" if len(key) >= 8 else "(too short)",
         "key_has_spaces": key != key.strip(),
-        "key_has_newline": "\n" in key or "\r" in key,
         "base_url":       base,
     }
 
-    try:
-        hdrs = get_headers()
-        resp = requests.get(
-            url,
-            headers=hdrs,
-            params={"page": page, "take": _JOBS_PAGE_SIZE},
-            timeout=30,
-        )
-        data = resp.json()
-    except Exception as e:
-        return {"error": str(e), **key_info}
+    # Try multiple parameter combos to isolate the issue
+    combos = [
+        ("no_params",        {}),
+        ("page_only",        {"page": page}),
+        ("page_take_50",     {"page": page, "take": 50}),
+        ("page_take_200",    {"page": page, "take": 200}),
+    ]
 
-    result = {
-        "status_code":    resp.status_code,
-        "url":            url,
-        "response_type":  type(data).__name__,
-        **key_info,
-    }
+    results = {**key_info}
+    resp = None
+    for label, params in combos:
+        try:
+            resp = requests.get(url, headers=hdrs, params=params, timeout=30)
+            data = resp.json()
+            count = len(data) if isinstance(data, list) else "not_a_list"
+            results[label] = {
+                "status": resp.status_code,
+                "jobs_count": count,
+                "raw_preview": str(data)[:200],
+            }
+            if isinstance(data, dict):
+                results[label]["keys"] = list(data.keys())
+        except Exception as e:
+            results[label] = {"error": str(e)}
 
-    # Response content diagnostics
-    if isinstance(data, list):
-        result["length"] = len(data)
-        result["first_item_keys"] = list(data[0].keys()) if data else []
-    elif isinstance(data, dict):
-        result["top_level_keys"] = list(data.keys())
-        for k, v in data.items():
-            if isinstance(v, list):
-                result[f"key_{k}_length"] = len(v)
-                if v and isinstance(v[0], dict):
-                    result[f"key_{k}_first_item_keys"] = list(v[0].keys())
+    # Capture any rate-limit / diagnostic response headers from last call
+    if resp is not None:
+        for h in resp.headers:
+            hl = h.lower()
+            if any(k in hl for k in ("rate", "limit", "request-id", "retry", "x-")):
+                results[f"header_{h}"] = resp.headers[h]
 
-    # Useful response headers
-    for h in ("x-ratelimit-remaining", "x-request-id", "www-authenticate", "content-type"):
-        if h in resp.headers:
-            result[f"resp_header_{h}"] = resp.headers[h]
-
-    result["raw_truncated"] = str(data)[:500]
-    return result
+    return results
 
 
 def fetch_all_jobs() -> list[dict]:
