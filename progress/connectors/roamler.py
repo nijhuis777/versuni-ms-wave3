@@ -20,9 +20,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL    = os.getenv("ROAMLER_API_BASE_URL", "https://api.roamler.com")
-API_KEY     = os.getenv("ROAMLER_API_KEY", "")
-CUSTOMER_ID = os.getenv("ROAMLER_CUSTOMER_ID", "")
+BASE_URL  = os.getenv("ROAMLER_API_BASE_URL", "https://api-customer.roamler.com")
+API_KEY   = os.getenv("ROAMLER_API_KEY", "")
 
 # Date range filter — default to Wave III window, override to 2025 for preview
 DATE_FROM = os.getenv("ROAMLER_DATE_FROM", "2026-03-09")
@@ -30,58 +29,109 @@ DATE_TO   = os.getenv("ROAMLER_DATE_TO",   "2026-06-30")
 
 ROAMLER_MARKETS = ["DE", "FR", "NL", "UK", "TR"]
 
+CATEGORY_KEYWORDS = {
+    "faem": "FAEM", "floorcare": "FAEM", "floor care": "FAEM",
+    "airfryer": "Airfryer", "air fryer": "Airfryer",
+    "handstick": "Handstick_VC", "hand stick": "Handstick_VC",
+    "steam iron": "Steam_Iron", "steamer": "Handheld_Steamer",
+    "all-in-one": "All_in_One", "all in one": "All_in_One",
+}
+
+
+def _parse_market(job: dict) -> str:
+    """Extract 2-letter market code.
+    workingTitle format: '2025 - January - Versuni - Airfryer - FR'
+    Market code is always the last ' - ' segment.
+    """
+    wt = job.get("workingTitle") or ""
+    parts = [p.strip() for p in wt.split(" - ")]
+    if parts:
+        candidate = parts[-1].upper()
+        if candidate in ROAMLER_MARKETS:
+            return candidate
+    # Fallback: scan title for market codes
+    title = (job.get("title") or "").upper()
+    for m in ROAMLER_MARKETS:
+        if title.endswith(f" {m}") or f" {m} " in f" {title} ":
+            return m
+    return "??"
+
+
+def _parse_category(job: dict) -> str:
+    """Extract category from workingTitle second-to-last segment.
+    workingTitle format: '2025 - January - Versuni - Airfryer - FR'
+    Category is always the second-to-last ' - ' segment.
+    """
+    wt = job.get("workingTitle") or ""
+    parts = [p.strip() for p in wt.split(" - ")]
+    if len(parts) >= 2:
+        cat_raw = parts[-2].lower()
+        for kw, cat in CATEGORY_KEYWORDS.items():
+            if kw in cat_raw:
+                return cat
+    # Fallback: scan title
+    title = (job.get("title") or "").lower()
+    for kw, cat in CATEGORY_KEYWORDS.items():
+        if kw in title:
+            return cat
+    return "??"
+
+
+def _job_id(job: dict) -> str:
+    return str(job.get("id") or job.get("Id") or job.get("jobId") or "")
+
 
 def get_headers() -> dict:
-    return {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-        "X-Customer-Id": CUSTOMER_ID,
-    }
+    return {"X-Roamler-Api-Key": API_KEY}
 
 
 def is_configured() -> bool:
-    return bool(API_KEY and BASE_URL and CUSTOMER_ID)
+    return bool(API_KEY and BASE_URL)
 
 
-def fetch_all_jobs(date_from: str = DATE_FROM, date_to: str = DATE_TO) -> list[dict]:
-    """Fetch all Roamler jobs within the date window."""
-    resp = requests.get(
-        f"{BASE_URL}/v1/jobs",
-        headers=get_headers(),
-        params={
-            "customer_id": CUSTOMER_ID,
-            "start_date_from": date_from,
-            "start_date_to": date_to,
-            "limit": 200,
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json().get("jobs", [])
+def fetch_all_jobs() -> list[dict]:
+    """Fetch all Roamler jobs (paginated)."""
+    results = []
+    page = 0
+    while True:
+        resp = requests.get(
+            f"{BASE_URL}/v1/Jobs",
+            headers=get_headers(),
+            params={"page": page},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        # Response may be a list or {"jobs": [...]}
+        batch = data if isinstance(data, list) else data.get("jobs", data.get("Jobs", []))
+        results.extend(batch)
+        if len(batch) < 50:
+            break
+        page += 1
+    return results
 
 
 def fetch_submissions(job_id: str, date_from: str = DATE_FROM, date_to: str = DATE_TO) -> list[dict]:
-    """Fetch all completed submissions for a single job."""
+    """Fetch all submissions for a single job within the date window."""
     results = []
     page = 1
     while True:
         resp = requests.get(
-            f"{BASE_URL}/v1/jobs/{job_id}/submissions",
+            f"{BASE_URL}/v1/Jobs/{job_id}/Submissions",
             headers=get_headers(),
             params={
-                "status": "approved",
-                "submitted_from": date_from,
-                "submitted_to": date_to,
+                "fromDate": f"{date_from}T00:00:00",
+                "toDate": f"{date_to}T23:59:59",
                 "page": page,
-                "per_page": 100,
+                "take": 1000,
             },
             timeout=60,
         )
         resp.raise_for_status()
         data = resp.json()
-        batch = data.get("submissions", [])
+        batch = data if isinstance(data, list) else data.get("submissions", data.get("Submissions", []))
         results.extend(batch)
-        if len(batch) < 100:
+        if len(batch) < 1000:
             break
         page += 1
     return results
@@ -97,13 +147,13 @@ def pull_all_submissions(date_from: str = DATE_FROM, date_to: str = DATE_TO) -> 
         return []
 
     all_submissions = []
-    jobs = fetch_all_jobs(date_from, date_to)
+    jobs = fetch_all_jobs()
     print(f"  Found {len(jobs)} Roamler jobs ({date_from} → {date_to})")
 
     for job in jobs:
-        job_id = job.get("id")
-        market = job.get("market_code", "??")
-        category = job.get("category_code", "??")
+        job_id = _job_id(job)
+        market = _parse_market(job)
+        category = _parse_category(job)
         subs = fetch_submissions(job_id, date_from, date_to)
         for s in subs:
             s["_market"] = market
@@ -125,22 +175,28 @@ def get_progress(date_from: str = DATE_FROM, date_to: str = DATE_TO) -> list[dic
 
     rows = []
     try:
-        jobs = fetch_all_jobs(date_from, date_to)
+        jobs = fetch_all_jobs()
+        # Group by market+category, summing submissions across jobs
+        counts: dict[tuple, int] = {}
         for job in jobs:
-            market = job.get("market_code", "??")
-            category = job.get("category_code", "??")
-            target = job.get("target_completions", 0)
-            completed = job.get("completed_count", 0)
-            pct = round(completed / target * 100, 1) if target > 0 else 0
+            market = _parse_market(job)
+            category = _parse_category(job)
+            if market == "??" or category == "??":
+                continue
+            subs = fetch_submissions(_job_id(job), date_from, date_to)
+            key = (market, category)
+            counts[key] = counts.get(key, 0) + len(subs)
+
+        for (market, category), completed in counts.items():
             rows.append({
                 "market": market,
                 "category": category,
                 "platform": "roamler",
-                "target": target,
+                "target": 0,       # Roamler API has no target field; set from scope config if needed
                 "completed": completed,
-                "pct": pct,
+                "pct": 0,          # Can't compute % without target
                 "last_updated": datetime.utcnow().isoformat(),
-                "status": _status(pct),
+                "status": "complete" if completed > 0 else "pending",
                 "date_from": date_from,
                 "date_to": date_to,
             })
