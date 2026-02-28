@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 from progress.connectors import roamler, wiser, pinion
+from dashboard.auth import require_password
 
 # ─── Page config ────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -24,6 +25,7 @@ st.set_page_config(
     page_icon="📊",
     layout="wide",
 )
+require_password()
 
 FIELDWORK_START = "2026-03-09"
 STATUS_COLORS = {

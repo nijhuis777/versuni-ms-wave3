@@ -14,6 +14,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+from dashboard.auth import require_password
 
 # ─── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -22,6 +23,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+require_password()
 
 VERSUNI_BLUE   = "#003087"
 VERSUNI_LIGHT  = "#0075BE"
