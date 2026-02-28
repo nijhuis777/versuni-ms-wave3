@@ -275,6 +275,51 @@ def raw_jobs_page(page: int = 1) -> dict:
     return results
 
 
+def raw_submissions_test(job_id: str, date_from: str, date_to: str) -> dict:
+    """Test /v1/Jobs/{id}/Submissions with multiple param combos.
+
+    Returns a dict like raw_jobs_page() — one key per combo showing
+    status code, count, and a preview.  Use this to find which params
+    the Submissions endpoint actually supports.
+    """
+    base = _base_url()
+    url = f"{base}/v1/Jobs/{job_id}/Submissions"
+    hdrs = get_headers()
+    dates = {
+        "fromDate": f"{date_from}T00:00:00",
+        "toDate": f"{date_to}T23:59:59",
+    }
+
+    combos = [
+        ("dates_only",          {**dates}),
+        ("dates_take_100",      {**dates, "take": 100}),
+        ("dates_take_500",      {**dates, "take": 500}),
+        ("dates_take_10000",    {**dates, "take": 10000}),
+        ("dates_page_1",        {**dates, "page": 1}),
+        ("no_params",           {}),
+    ]
+
+    results = {"job_id": job_id}
+    for label, params in combos:
+        try:
+            resp = requests.get(url, headers=hdrs, params=params, timeout=30)
+            data = resp.json()
+            count = len(data) if isinstance(data, list) else "not_a_list"
+            results[label] = {
+                "status": resp.status_code,
+                "count": count,
+                "preview": str(data)[:200],
+            }
+            # Capture pagination headers
+            for h in resp.headers:
+                if "paging" in h.lower() or "total" in h.lower():
+                    results[label][f"hdr_{h}"] = resp.headers[h]
+        except Exception as e:
+            results[label] = {"error": str(e)}
+
+    return results
+
+
 def fetch_all_jobs() -> list[dict]:
     """Fetch all Roamler jobs in a single call (no pagination params).
 

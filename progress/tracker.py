@@ -501,6 +501,24 @@ with tab_progress:
                         else:
                             st.warning("get_progress() returned an empty list.")
 
+                    # ── Submissions endpoint diagnostic ─────────────────
+                    st.divider()
+                    st.caption(
+                        "**Submissions API test** — tests which query params the Submissions "
+                        "endpoint accepts (dates only, take=N, page=N, etc.)."
+                    )
+                    if st.button("🔬 Test Submissions endpoint params", key="test_subs_params"):
+                        # Pick the first valid job to test against
+                        test_job = next((r for r in debug_rows if r["market"] != "??"), None)
+                        if test_job:
+                            with st.spinner(f"Testing submissions params on job {test_job['id']}…"):
+                                subs_diag = roamler.raw_submissions_test(
+                                    test_job["id"], date_from_str, date_to_str
+                                )
+                            st.json(subs_diag)
+                        else:
+                            st.warning("No valid jobs found to test against.")
+
                     # ── Per-job submission count (on demand) ───────────────
                     st.divider()
                     st.caption(
