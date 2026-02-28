@@ -73,11 +73,11 @@ targets:
 
   # ── Poland — Wave II 2025 only (not Wave III) ──────────────────────────────
   POL:
-    FAEM: 0
-    SAEM: 0
-    Airfryer: 0
-    Handstick_WD: 0
-    Handstick_Dry: 0
-    RVC: 0
-    Handheld_Steamer: 0
-    Stand_Steamer: 0
+    FAEM: 243
+    SAEM: 243
+    Airfryer: 243
+    Handstick_WD: 243
+    Handstick_Dry: 243
+    RVC: 243
+    Handheld_Steamer: 218
+    Stand_Steamer: 218
