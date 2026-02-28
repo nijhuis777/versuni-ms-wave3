@@ -67,6 +67,24 @@ MARKET_NAMES = {
 
 # ─── Targets ──────────────────────────────────────────────────────────────────
 
+def load_scope() -> set[tuple[str, str]]:
+    """Return set of (market, category) pairs that are in Wave III scope per scope.yaml.
+    Markets flagged wave3: false (e.g. POL) are excluded entirely.
+    Returns an empty set if the file is missing (no filtering applied)."""
+    scope_file = CONFIG_DIR / "scope.yaml"
+    if not scope_file.exists():
+        return set()
+    with open(scope_file) as f:
+        data = yaml.safe_load(f)
+    result = set()
+    for market, mdata in (data.get("markets") or {}).items():
+        if (mdata or {}).get("wave3") is False:
+            continue
+        for cat in ((mdata or {}).get("categories") or {}):
+            result.add((market, cat))
+    return result
+
+
 def load_targets_from_file() -> pd.DataFrame:
     """Load targets from config/targets.yaml, return as DataFrame."""
     targets_file = CONFIG_DIR / "targets.yaml"
@@ -170,6 +188,11 @@ if not targets_df.empty and "target" in targets_df.columns:
         how="left",
     )
 df["target"] = df.get("target", pd.Series(0, index=df.index)).fillna(0).astype(int)
+
+# ─── Scope filter — drop any market×category not in Wave III scope ────────────
+_scope = load_scope()
+if _scope:
+    df = df[df.apply(lambda r: (r["market"], r["category"]) in _scope, axis=1)].copy()
 
 # Recompute pct + status
 df["pct"] = (
