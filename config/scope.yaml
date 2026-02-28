@@ -1,157 +1,197 @@
 # Wave III Scope — 8 confirmed markets
-# Source: Mystery shopping 2026 - Inputs - updated all markets.xlsx
-# Last updated: 2026-02-28
-# Note: India, Indonesia, Korea appear in file but are NOT in Wave III scope
+# Source: "NEW UPDATED SCOPE" matrix shared 2026-02-28
+# d = digital measurement,  s = store visit (mystery shopping)
+# Orange cells in source = out of scope for that market
+#
+# Note: Poland (POL) was in Wave II (2025) scope — NOT in Wave III (2026).
+#       Included here for 2025 preview reference only.
 
 markets:
-  NL:
-    name: Netherlands
-    platform: roamler
-    categories: [Airfryer, FAEM]
-    retailers_ms: [MSH, Expert, Coolblue]
-    retailers_survey: [MSH, Blokker, Coolblue, Bol.com, Expert, Krefel]
-
-  FR:
-    name: France
-    platform: roamler
-    categories: [Airfryer, FAEM]
-    retailers_ms: [Boulanger, Darty, Fnac, Auchan, Carrefour, Conforama, Hyper_U, But, Centre_E.Leclerc]
-    retailers_survey: [Boulanger, Darty, Fnac, Auchan, Carrefour, Conforama, Hyper_U, But]
-
   DE:
     name: Germany
+    region: EU
     platform: roamler
-    categories: [Airfryer, FAEM]
+    categories:
+      FAEM:              d   # Full Auto
+      SAEM:              s   # Semi / Baristina
+      Airfryer:          d
+      Handstick_WD:      s   # Handsticks W&D
+      Handstick_Dry:     s   # Handsticks Dry
+      RVC:               s   # Robot Vacuum Cleaner
+      Handheld_Steamer:  d
     retailers_ms: [Media_Markt, Saturn, Expert, Euronics]
     retailers_survey: [Conrad, Galaxus, Lidl, MediMax, Media_Markt, Saturn, Expert, Euronics]
 
+  FR:
+    name: France
+    region: EU
+    platform: roamler
+    categories:
+      FAEM:              d
+      SAEM:              s
+      Airfryer:          d
+      Handstick_Dry:     s
+      Handheld_Steamer:  d
+    retailers_ms: [Boulanger, Darty, Fnac, Auchan, Carrefour, Conforama, Hyper_U, But, Centre_E.Leclerc]
+    retailers_survey: [Boulanger, Darty, Fnac, Auchan, Carrefour, Conforama, Hyper_U, But]
+
+  NL:
+    name: Netherlands
+    region: EU
+    platform: roamler
+    categories:
+      FAEM:              d
+      SAEM:              s
+      Airfryer:          d
+      Handstick_WD:      s
+      Handstick_Dry:     s
+      RVC:               s
+      Handheld_Steamer:  d
+    retailers_ms: [MSH, Expert, Coolblue]
+    retailers_survey: [MSH, Blokker, Coolblue, Bol.com, Expert, Krefel]
+
   UK:
     name: United Kingdom
+    region: EU
     platform: roamler
-    categories: [Airfryer, FAEM]
+    categories:
+      FAEM:                  s   # "Full Auto" listed as 's' for UK
+      SAEM:                  s
+      Portioned_Espresso:    s
+      Airfryer:              s
+      Handstick_Dry:         s
+      Handheld_Steamer:      d
     retailers_ms: [John_Lewis, Costco, Currys, Argos, Robert_Dyas]
     retailers_survey: [Tesco, Asda, Currys, Argos, John_Lewis, Costco]
 
   TR:
     name: Turkey
+    region: META
     platform: roamler
-    categories: [FAEM, Handstick_VC_Wet_Dry, Handstick_VC, Steam_Iron]
+    categories:
+      FAEM:              d
+      Handstick_WD:      d
+      Handstick_Dry:     s
+      RVC:               s
+      Handheld_Steamer:  s
+      Steam_Generator:   s
+      Steam_Iron:        d
     retailers_ms: [MediaMarkt, Teknosa, Vatan, Evkur]
     retailers_survey: [MediaMarkt, Teknosa, Vatan, Evkur, Migros, Evshop]
 
   AU:
     name: Australia
+    region: META
     platform: wiser
-    categories: [FAEM, Airfryer, All_in_One, Handheld_Steamer]
+    categories:
+      FAEM:              s
+      Airfryer:          d
+      All_in_One:        s
+      Handheld_Steamer:  d
     retailers_ms: [Harvey_Norman, Big_W, David_Jones, Myer, Good_Guys, JB_Hifi, Bing_Lee]
     retailers_survey: [Harvey_Norman, Big_W, David_Jones, Myer, Good_Guys, JB_Hifi]
 
   BR:
     name: Brazil
+    region: LATAM
     platform: pinion
-    categories: [FAEM, Airfryer]
+    categories:
+      FAEM:     d
+      Airfryer: s
+      Blender:  d
     retailers_ms: [Casas_Bahia, Fast_Shop, Sams_Club, Novo_Mundo, Ferreira_Costa, Macavi]
     retailers_survey: [Casas_Bahia, Magazine_Luiza, Carrefour, Lojas_Americanas, Polishop, Fast_Shop]
 
   US:
     name: United States
+    region: NAM
     platform: wiser
-    categories: [FAEM]
+    categories:
+      FAEM: d
+      SAEM: s
     retailers_ms: [Williams_Sonoma, Crate_and_Barrel, Target]
     retailers_survey: [Williams_Sonoma, Seattle_Coffee_Gear, Best_Buy, Crate_and_Barrel, Costco, Target]
 
-# All unique categories across all markets
+  POL:
+    name: Poland
+    region: CEE
+    platform: roamler
+    wave3: false   # NOT in Wave III — 2025 Wave II data only
+    categories:
+      FAEM:              d
+      SAEM:              s
+      Airfryer:          d
+      Handstick_WD:      d
+      Handstick_Dry:     s
+      RVC:               s
+      Handheld_Steamer:  d
+      Stand_Steamer:     d
+    retailers_ms: []
+    retailers_survey: []
+
+
+# ── All category codes ──────────────────────────────────────────────────────
 categories:
   FAEM:
-    label: Fully Automatic Espresso Machines
-    wave2_json: Versuni_FAEM.json
-    markets: [NL, FR, DE, UK, TR, AU, BR, US]
+    label: Fully Automatic Espresso Machine
+    markets_w3: [DE, FR, NL, UK, TR, AU, BR, US]
+
+  SAEM:
+    label: Semi-Automatic / Baristina Espresso Machine
+    markets_w3: [DE, FR, NL, UK, US]
+
+  Portioned_Espresso:
+    label: Portioned Espresso
+    markets_w3: [UK]
 
   Airfryer:
     label: Airfryer
-    wave2_json: Versuni_Airfryer.json
-    markets: [NL, FR, DE, UK, AU, BR]
+    markets_w3: [DE, FR, NL, UK, AU, BR]
 
-  Handstick_VC_Wet_Dry:
-    label: Handstick Vacuum Cleaner (Wet & Dry)
-    wave2_json: "Versuni_Handsticks W&D.json"
-    markets: [TR]
+  Blender:
+    label: Blender
+    markets_w3: [BR]
 
-  Handstick_VC:
-    label: Handstick Vacuum Cleaner (Dry)
-    wave2_json: Versuni_Handsticks_Dry.json
-    markets: [TR]
+  Handstick_WD:
+    label: Handstick Vacuum Cleaner — Wet & Dry
+    markets_w3: [DE, NL, TR]
 
-  Steam_Iron:
-    label: Steam Iron
-    wave2_json: Versuni_Steam_Iron.json
-    markets: [TR]
+  Handstick_Dry:
+    label: Handstick Vacuum Cleaner — Dry
+    markets_w3: [DE, FR, NL, UK, TR]
+
+  RVC:
+    label: Robot Vacuum Cleaner
+    markets_w3: [DE, NL, TR]
 
   All_in_One:
-    label: All-in-One Garment Care (Steam Generator)
-    wave2_json: Versuni_Steam_Generator.json  # confirm this is correct mapping
-    markets: [AU]
+    label: All-in-One Garment Care
+    markets_w3: [AU]
 
   Handheld_Steamer:
     label: Handheld Steamer
-    wave2_json: Versuni_Handheld_steamer.json
-    markets: [AU]
+    markets_w3: [DE, FR, NL, UK, TR, AU]
 
-# Available but NOT in Wave III scope (kept for reference)
-out_of_scope_categories:
-  SAEM:
-    label: Semi-Automatic Espresso Machines
-    wave2_json: Versuni_SAEM.json
-    note: In Korea scope file but Korea not in Wave III
-  RVC:
-    label: Robot Vacuum Cleaner
-    wave2_json: Versuni_RVC.json
-    note: Not in any confirmed Wave III market
+  Steam_Generator:
+    label: Steam Generator
+    markets_w3: [TR]
+
+  Steam_Iron:
+    label: Steam Iron
+    markets_w3: [TR]
+
+  Stand_Steamer:
+    label: Stand Steamer
+    markets_w3: []   # only in POL (Wave II) — not confirmed for Wave III
+
+  Dry_Iron:
+    label: Dry Iron
+    markets_w3: []   # not listed in Wave III scope
+
 
 kpis:
   KPI1: Availability
   KPI2: Visibility / Attractiveness
   KPI3: Brand Recommendation
 
-# KPI3 recommendation answer options (from Brand Recommendation_options sheet)
-kpi3_answer_options:
-  common:
-    - Experienced brand in this field
-    - Quality (less complaints / services)
-    - Warranty
-    - Price / Quality Ratio
-    - Innovative
-    - Newly launched product
-    - Bestseller
-    - Easy to use
-    - Easy to clean (device)
-    - Design
-  FAEM:
-    - Good variety of coffee drinks available
-    - Type of bean grinder
-    - Frothing quality
-  Airfryer:
-    - Several usage options (Frying, Baking, Grilling)
-    - Energy efficient
-    - Basket Volume
-    - Number of Baskets
-    - Number of dishes possible at the same time
-  Handstick_VC:
-    - Quick cleaning option
-    - Suction power
-    - Battery time / run-time
-  Handstick_VC_Wet_Dry:
-    - Vacuum and mop in one device
-    - Quick cleaning option
-    - Suction power
-    - Battery time / run-time
-    - Water tank size
-  Handheld_Steamer:
-    - Water tank size
-    - Easy to pack & take for travelling
-    - Strong steam output
-    - Heating Time
-    - No burns guaranteed
-
-# Potential future markets (present in scope file but NOT Wave III)
 future_markets_not_in_scope: [INDIA, INDONESIA, KOREA]

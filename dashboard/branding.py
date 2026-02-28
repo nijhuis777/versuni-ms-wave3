@@ -1,12 +1,10 @@
 """
 Versuni × Roamler — Shared Branding
 =====================================
-Roamler-style CSS theme, logo loading, and header rendering
-shared by tracker.py and dashboard/app.py.
+Sticky branded header, multi-theme CSS, and logo loading.
+Shared by progress/tracker.py and dashboard/app.py.
 
-Logo files expected at (in priority order):
-  1. <project_root>/assets/Logo Versuni.jfif   (add to git for Streamlit Cloud)
-  2. <project_root>/../Operations/Logo Versuni.jfif  (local dev fallback)
+Themes: light · dark · roamler · versuni
 """
 
 from __future__ import annotations
@@ -16,12 +14,11 @@ import base64
 import streamlit as st
 
 # ─── Brand colors ─────────────────────────────────────────────────────────────
-ROAMLER_ORANGE  = "#FF6738"
-ROAMLER_DARK    = "#1A1A1A"
-ROAMLER_GREY    = "#F5F5F5"
-VERSUNI_BLUE    = "#003087"
+ROAMLER_ORANGE = "#FF6738"
+ROAMLER_DARK   = "#1A1A1A"
+VERSUNI_BLUE   = "#003087"
 
-# Status → color mapping (used by both tracker and dashboard)
+# Status → color (shared across both apps)
 STATUS_COLORS = {
     "complete":  "#2ECC71",
     "on_track":  "#3498DB",
@@ -30,47 +27,173 @@ STATUS_COLORS = {
     "pending":   "#BDC3C7",
 }
 
-# ─── CSS ──────────────────────────────────────────────────────────────────────
-CSS = f"""
+# ─── Themes ───────────────────────────────────────────────────────────────────
+THEMES: dict[str, dict] = {
+    "light": {
+        "label":        "☀️ Light",
+        "page_bg":      "#F8F8F8",
+        "card_bg":      "#FFFFFF",
+        "card_border":  "#EBEBEB",
+        "text":         "#1A1A1A",
+        "text_muted":   "#888888",
+        "header_bg":    "#1A1A1A",        # dark header on light page
+        "header_anim":  False,
+        "sidebar_bg":   "#FAFAFA",
+        "sidebar_border": "#EBEBEB",
+        "input_border": "#DDDDDD",
+    },
+    "dark": {
+        "label":        "🌙 Dark",
+        "page_bg":      "#111111",
+        "card_bg":      "#1E1E1E",
+        "card_border":  "#2E2E2E",
+        "text":         "#F0F0F0",
+        "text_muted":   "#888888",
+        "header_bg":    "#0A0A0A",
+        "header_anim":  False,
+        "sidebar_bg":   "#161616",
+        "sidebar_border": "#2A2A2A",
+        "input_border": "#3A3A3A",
+    },
+    "roamler": {
+        "label":        "🟠 Roamler",
+        "page_bg":      "#FFF5F1",
+        "card_bg":      "#FFFFFF",
+        "card_border":  "#FFD5C8",
+        "text":         "#1A1A1A",
+        "text_muted":   "#777777",
+        "header_bg":    "linear-gradient(-45deg,#FF6738,#FF3D00,#FF8A50,#FF6738)",
+        "header_anim":  True,             # animated gradient
+        "sidebar_bg":   "#FFF5F1",
+        "sidebar_border": "#FFD5C8",
+        "input_border": "#FFBAA8",
+    },
+    "versuni": {
+        "label":        "🔵 Versuni",
+        "page_bg":      "#F0F4FF",
+        "card_bg":      "#FFFFFF",
+        "card_border":  "#C8D8F8",
+        "text":         "#1A1A1A",
+        "text_muted":   "#666688",
+        "header_bg":    "linear-gradient(-45deg,#003087,#0056C8,#001F5A,#003087)",
+        "header_anim":  True,
+        "sidebar_bg":   "#F0F4FF",
+        "sidebar_border": "#C8D8F8",
+        "input_border": "#A8C0F0",
+    },
+}
+
+HEADER_HEIGHT_PX = 68   # our branded header height
+ST_HEADER_PX     = 56   # Streamlit's built-in top bar height
+
+
+# ─── CSS builder ──────────────────────────────────────────────────────────────
+def _build_css(theme_key: str) -> str:
+    t = THEMES.get(theme_key, THEMES["light"])
+    anim_css = """
+@keyframes header-gradient {
+    0%   { background-position: 0%   50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0%   50%; }
+}
+""" if t["header_anim"] else ""
+
+    header_bg_css = (
+        f"background: {t['header_bg']}; background-size: 400% 400%;"
+        f"animation: header-gradient 8s ease infinite;"
+        if t["header_anim"] else
+        f"background: {t['header_bg']};"
+    )
+
+    return f"""
 <style>
-/* ── Google-style clean font ─────────────────────────────────────────────── */
+{anim_css}
+
+/* ── Google font ─────────────────────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] {{
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }}
 
 /* ── Page background ─────────────────────────────────────────────────────── */
-.stApp {{
-    background-color: #F8F8F8;
+.stApp, [data-testid="stAppViewContainer"] {{
+    background-color: {t['page_bg']} !important;
 }}
 
-/* ── Metric cards ─────────────────────────────────────────────────────────── */
+/* ── Hide Streamlit's own thin header bar to avoid double-bar look ───────── */
+header[data-testid="stHeader"] {{
+    background: transparent !important;
+    height: {ST_HEADER_PX}px !important;
+}}
+/* Keep the hamburger menu button visible */
+header[data-testid="stHeader"] button {{
+    visibility: visible !important;
+}}
+
+/* ── Our sticky branded header ───────────────────────────────────────────── */
+.versuni-header {{
+    position: fixed !important;
+    top: {ST_HEADER_PX}px !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 999 !important;
+    height: {HEADER_HEIGHT_PX}px;
+    {header_bg_css}
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 1.75rem !important;
+    box-shadow: 0 3px 16px rgba(0,0,0,0.18) !important;
+}}
+
+/* ── Push main content below both headers ────────────────────────────────── */
+[data-testid="block-container"] {{
+    padding-top: {ST_HEADER_PX + HEADER_HEIGHT_PX + 16}px !important;
+}}
+
+/* ── Sidebar: push content below both headers ───────────────────────────── */
+[data-testid="stSidebar"] {{
+    background-color: {t['sidebar_bg']} !important;
+    border-right: 2px solid {t['sidebar_border']} !important;
+    padding-top: {ST_HEADER_PX + HEADER_HEIGHT_PX}px !important;
+}}
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {{
+    border-left: 3px solid {ROAMLER_ORANGE} !important;
+    padding-left: 0.5rem !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: {t['text']} !important;
+}}
+
+/* ── Metric cards ────────────────────────────────────────────────────────── */
 [data-testid="metric-container"] {{
-    background: #FFFFFF;
-    border: 1px solid #EBEBEB;
-    border-top: 4px solid {ROAMLER_ORANGE};
-    border-radius: 8px;
-    padding: 1rem 1.25rem 0.75rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    background: {t['card_bg']} !important;
+    border: 1px solid {t['card_border']} !important;
+    border-top: 4px solid {ROAMLER_ORANGE} !important;
+    border-radius: 8px !important;
+    padding: 1rem 1.25rem 0.75rem !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important;
 }}
 [data-testid="stMetricValue"] {{
-    color: {ROAMLER_DARK} !important;
+    color: {t['text']} !important;
     font-weight: 700 !important;
     font-size: 1.8rem !important;
 }}
 [data-testid="stMetricLabel"] {{
-    color: #888 !important;
+    color: {t['text_muted']} !important;
     font-size: 0.75rem !important;
     text-transform: uppercase !important;
     letter-spacing: 0.07em !important;
     font-weight: 500 !important;
 }}
 [data-testid="stMetricDelta"] {{
-    color: #666 !important;
+    color: {t['text_muted']} !important;
     font-size: 0.8rem !important;
 }}
 
-/* ── Buttons ──────────────────────────────────────────────────────────────── */
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
 .stButton > button {{
     background-color: {ROAMLER_ORANGE} !important;
     color: white !important;
@@ -86,68 +209,65 @@ html, body, [class*="css"] {{
     color: white !important;
 }}
 
-/* ── Dividers ─────────────────────────────────────────────────────────────── */
+/* ── Dividers ────────────────────────────────────────────────────────────── */
 hr {{
     border: none !important;
     border-top: 2px solid {ROAMLER_ORANGE} !important;
-    opacity: 0.15 !important;
+    opacity: 0.2 !important;
     margin: 1rem 0 !important;
 }}
 
-/* ── Subheadings ──────────────────────────────────────────────────────────── */
+/* ── Section subheadings ─────────────────────────────────────────────────── */
 h2 {{
-    border-left: 4px solid {ROAMLER_ORANGE};
+    border-left: 4px solid {ROAMLER_ORANGE} !important;
     padding-left: 0.7rem !important;
-    color: {ROAMLER_DARK} !important;
+    color: {t['text']} !important;
     font-weight: 700 !important;
-    font-size: 1.1rem !important;
+    font-size: 1.05rem !important;
     margin-top: 1.5rem !important;
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }}
 
-/* ── Plotly chart wrapper ─────────────────────────────────────────────────── */
+/* ── Chart wrappers ──────────────────────────────────────────────────────── */
 [data-testid="stPlotlyChart"] {{
-    background: white;
-    border-radius: 8px;
-    padding: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    border: 1px solid #EBEBEB;
-}}
-
-/* ── Sidebar ──────────────────────────────────────────────────────────────── */
-[data-testid="stSidebar"] {{
-    background-color: #FAFAFA;
-    border-right: 2px solid #EBEBEB;
-}}
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {{
-    border-left: 3px solid {ROAMLER_ORANGE} !important;
-    padding-left: 0.5rem !important;
-    font-size: 0.9rem !important;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: {ROAMLER_DARK} !important;
-}}
-
-/* ── Expander ─────────────────────────────────────────────────────────────── */
-[data-testid="stExpander"] {{
-    border: 1px solid #EBEBEB !important;
-    border-radius: 6px !important;
-    background: white;
-}}
-
-/* ── Dataframe ────────────────────────────────────────────────────────────── */
-[data-testid="stDataFrame"] {{
+    background: {t['card_bg']} !important;
     border-radius: 8px !important;
-    overflow: hidden;
-    border: 1px solid #EBEBEB !important;
+    padding: 0.5rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+    border: 1px solid {t['card_border']} !important;
 }}
 
-/* ── Selectboxes ──────────────────────────────────────────────────────────── */
-[data-testid="stSelectbox"] > div > div {{
-    border-color: #DDDDDD !important;
+/* ── Expanders ───────────────────────────────────────────────────────────── */
+[data-testid="stExpander"] {{
+    border: 1px solid {t['card_border']} !important;
     border-radius: 6px !important;
+    background: {t['card_bg']} !important;
+}}
+
+/* ── Dataframes ──────────────────────────────────────────────────────────── */
+[data-testid="stDataFrame"],
+[data-testid="stDataEditor"] {{
+    border-radius: 8px !important;
+    border: 1px solid {t['card_border']} !important;
+}}
+
+/* ── Selectboxes / inputs ────────────────────────────────────────────────── */
+[data-testid="stSelectbox"] > div > div {{
+    border-color: {t['input_border']} !important;
+    border-radius: 6px !important;
+    background: {t['card_bg']} !important;
+    color: {t['text']} !important;
+}}
+
+/* ── Caption / small text ────────────────────────────────────────────────── */
+.stCaption, [data-testid="stCaptionContainer"] {{
+    color: {t['text_muted']} !important;
+}}
+
+/* ── General text ────────────────────────────────────────────────────────── */
+p, li, label, .stMarkdown {{
+    color: {t['text']} !important;
 }}
 </style>
 """
@@ -163,7 +283,6 @@ _LOGO_SEARCH = [
 
 
 def _find_logo(stem: str) -> Path | None:
-    """Find a logo file by stem name (without extension)."""
     for folder in _LOGO_SEARCH:
         if not folder.exists():
             continue
@@ -175,62 +294,90 @@ def _find_logo(stem: str) -> Path | None:
 
 
 def _img_b64(path: Path) -> str:
-    """Return base64 data-URI for an image file."""
     mime = "image/jpeg" if path.suffix.lower() in (".jpg", ".jpeg", ".jfif") else "image/png"
     data = base64.b64encode(path.read_bytes()).decode()
     return f"data:{mime};base64,{data}"
 
 
-def render_header(subtitle: str = "Wave III — Fieldwork Progress") -> None:
-    """Render the branded page header with Versuni + Roamler logos."""
-    inject_css()
+# ─── Public API ───────────────────────────────────────────────────────────────
 
+def inject_css(theme: str = "light") -> None:
+    """Inject the full themed CSS (call once per page, before any content)."""
+    st.markdown(_build_css(theme), unsafe_allow_html=True)
+
+
+def theme_selector(sidebar: bool = True) -> str:
+    """Render theme toggle buttons; return selected theme key."""
+    options = {k: v["label"] for k, v in THEMES.items()}
+    container = st.sidebar if sidebar else st
+
+    current = st.session_state.get("theme", "light")
+    selected_label = options.get(current, options["light"])
+
+    choice = container.radio(
+        "🎨 Theme",
+        list(options.values()),
+        index=list(options.values()).index(selected_label),
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    # Map label back to key
+    theme_key = next(k for k, v in options.items() if v == choice)
+    st.session_state["theme"] = theme_key
+    return theme_key
+
+
+def render_header(subtitle: str = "Wave III — Fieldwork Progress",
+                  theme: str = "light") -> None:
+    """Render the sticky branded header. Call AFTER inject_css()."""
     versuni_path = _find_logo("Logo Versuni")
     roamler_path = _find_logo("Logo Roamler")
 
     versuni_html = (
-        f'<img src="{_img_b64(versuni_path)}" style="height:44px;object-fit:contain;">'
+        f'<img src="{_img_b64(versuni_path)}" '
+        f'style="max-height:42px;width:auto;max-width:130px;display:block;">'
         if versuni_path else
-        f'<span style="font-size:1.4rem;font-weight:800;color:{VERSUNI_BLUE};">VERSUNI</span>'
+        f'<span style="font-size:1.3rem;font-weight:800;color:#003087;">VERSUNI</span>'
     )
     roamler_html = (
-        f'<img src="{_img_b64(roamler_path)}" style="height:36px;object-fit:contain;">'
+        f'<img src="{_img_b64(roamler_path)}" '
+        f'style="max-height:38px;width:auto;display:block;">'
         if roamler_path else
         f'<span style="font-size:1rem;font-weight:700;color:{ROAMLER_ORANGE};">ROAMLER</span>'
     )
 
     st.markdown(
         f"""
-        <div style="
-            background: {ROAMLER_DARK};
-            border-radius: 10px;
-            padding: 1rem 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.12);
-        ">
+        <div class="versuni-header">
+            <!-- Left: Versuni logo + title -->
             <div style="display:flex;align-items:center;gap:1rem;">
-                <div style="background:white;padding:6px 10px;border-radius:6px;">
+                <div style="background:white;padding:7px 11px;border-radius:6px;
+                            display:flex;align-items:center;justify-content:center;
+                            box-shadow:0 1px 4px rgba(0,0,0,0.15);">
                     {versuni_html}
                 </div>
                 <div>
-                    <div style="color:white;font-size:1.1rem;font-weight:700;
-                                letter-spacing:0.03em;line-height:1.2;">
+                    <div style="color:white;font-size:1.05rem;font-weight:700;
+                                letter-spacing:0.02em;line-height:1.25;
+                                text-shadow:0 1px 3px rgba(0,0,0,0.3);">
                         Mystery Shopping
                     </div>
-                    <div style="color:#aaa;font-size:0.8rem;font-weight:400;
-                                letter-spacing:0.04em;">
+                    <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;
+                                font-weight:400;letter-spacing:0.04em;">
                         {subtitle}
                     </div>
                 </div>
             </div>
-            <div style="display:flex;align-items:center;gap:0.6rem;">
-                <span style="color:#888;font-size:0.75rem;font-weight:500;">
+
+            <!-- Right: powered by Roamler -->
+            <div style="display:flex;align-items:center;gap:0.7rem;">
+                <span style="color:rgba(255,255,255,0.5);font-size:0.7rem;
+                             font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">
                     powered by
                 </span>
-                <div style="background:white;padding:5px 10px;border-radius:6px;">
+                <div style="background:white;padding:7px 13px;border-radius:6px;
+                            display:flex;align-items:center;justify-content:center;
+                            box-shadow:0 1px 4px rgba(0,0,0,0.15);">
                     {roamler_html}
                 </div>
             </div>
@@ -238,8 +385,3 @@ def render_header(subtitle: str = "Wave III — Fieldwork Progress") -> None:
         """,
         unsafe_allow_html=True,
     )
-
-
-def inject_css() -> None:
-    """Inject the Roamler CSS theme."""
-    st.markdown(CSS, unsafe_allow_html=True)

@@ -20,15 +20,62 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROAMLER_MARKETS = ["DE", "FR", "NL", "UK", "TR"]
+ROAMLER_MARKETS = ["DE", "FR", "NL", "UK", "TR", "AU", "BR", "US", "POL"]
 
+# Map keywords found in workingTitle → canonical category name.
+# ORDER MATTERS: more specific strings must come before shorter/overlapping ones.
 CATEGORY_KEYWORDS = {
-    "faem": "FAEM", "floorcare": "FAEM", "floor care": "FAEM",
-    "airfryer": "Airfryer", "air fryer": "Airfryer",
-    "wet": "Handstick_VC",      # "wet & dry" — checked before plain "handstick"
-    "handstick": "Handstick_VC", "hand stick": "Handstick_VC",
-    "steam iron": "Steam_Iron", "steamer": "Handheld_Steamer",
-    "all-in-one": "All_in_One", "all in one": "All_in_One",
+    # ── Coffee machines ───────────────────────────────────────────────────────
+    "full auto":           "FAEM",
+    "fully auto":          "FAEM",
+    "faem":                "FAEM",
+    "floorcare":           "FAEM",   # legacy spelling
+
+    "semi":                "SAEM",
+    "baristina":           "SAEM",
+    "saem":                "SAEM",
+
+    "portioned":           "Portioned_Espresso",
+    "pe ":                 "Portioned_Espresso",   # "PE " with space to avoid false positives
+
+    # ── Kitchen appliances ────────────────────────────────────────────────────
+    "airfryer":            "Airfryer",
+    "air fryer":           "Airfryer",
+
+    "blender":             "Blender",
+
+    "juicer":              "Juicer_Mixer",
+    "mixer":               "Juicer_Mixer",
+    "grinder":             "Juicer_Mixer",
+
+    "cooker":              "Cooker_Griller",
+    "griller":             "Cooker_Griller",
+
+    # ── Floor care ────────────────────────────────────────────────────────────
+    "w&d":                 "Handstick_WD",    # "W&D" = Wet & Dry — must come before plain handstick
+    "wet & dry":           "Handstick_WD",
+    "wet dry":             "Handstick_WD",
+    "wet":                 "Handstick_WD",    # "wet" alone also means W&D
+
+    "handstick":           "Handstick_Dry",   # remaining handstick jobs = Dry variant
+    "hand stick":          "Handstick_Dry",
+
+    "rvc":                 "RVC",
+    "robot":               "RVC",
+
+    # ── Garment / fabric care ─────────────────────────────────────────────────
+    "all-in-one":          "All_in_One",
+    "all in one":          "All_in_One",
+
+    "steam iron":          "Steam_Iron",      # must come before plain "steam"
+    "steam generator":     "Steam_Generator", # must come before "steam gen"
+    "steam gen":           "Steam_Generator",
+    "stand steamer":       "Stand_Steamer",   # must come before plain "steamer"
+    "stand steam":         "Stand_Steamer",
+    "handheld":            "Handheld_Steamer",
+    "steamer":             "Handheld_Steamer",
+
+    "dry iron":            "Dry_Iron",
 }
 
 
@@ -189,7 +236,11 @@ def pull_all_submissions(date_from: str = None, date_to: str = None) -> list[dic
         job_id = _job_id(job)
         market = _parse_market(job)
         category = _parse_category(job)
-        subs = fetch_submissions(job_id, date_from, date_to)
+        try:
+            subs = fetch_submissions(job_id, date_from, date_to)
+        except Exception as job_err:
+            print(f"    SKIP job {job_id} ({market}/{category}): {job_err}")
+            continue
         for s in subs:
             s["_market"] = market
             s["_category"] = category
@@ -213,36 +264,51 @@ def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
     if not is_configured():
         return _stub_data()
 
-    rows = []
+    counts: dict[tuple, int] = {}
+    skipped: list[str] = []
     try:
         jobs = fetch_all_jobs()
-        # Group by market+category, summing submissions across jobs
-        counts: dict[tuple, int] = {}
-        for job in jobs:
-            market = _parse_market(job)
-            category = _parse_category(job)
-            if market == "??" or category == "??":
-                continue
-            subs = fetch_submissions(_job_id(job), date_from, date_to)
-            key = (market, category)
-            counts[key] = counts.get(key, 0) + len(subs)
-
-        for (market, category), completed in counts.items():
-            rows.append({
-                "market": market,
-                "category": category,
-                "platform": "roamler",
-                "target": 0,       # No target in API — merged from targets.yaml in tracker
-                "completed": completed,
-                "pct": 0,          # Recomputed after targets are merged in tracker
-                "last_updated": datetime.utcnow().isoformat(),
-                "status": "complete" if completed > 0 else "pending",
-                "date_from": date_from,
-                "date_to": date_to,
-            })
     except Exception as e:
         rows = _stub_data()
         rows[0]["error"] = str(e)
+        return rows
+
+    # Fetch submissions per job — each job is independent; a failing job is
+    # logged and skipped rather than aborting the entire data pull.
+    for job in jobs:
+        market = _parse_market(job)
+        category = _parse_category(job)
+        if market == "??" or category == "??":
+            continue
+        jid = _job_id(job)
+        try:
+            subs = fetch_submissions(jid, date_from, date_to)
+        except Exception as job_err:
+            skipped.append(f"{jid} ({market}/{category}): {job_err}")
+            continue
+        key = (market, category)
+        counts[key] = counts.get(key, 0) + len(subs)
+
+    rows = []
+    for (market, category), completed in counts.items():
+        rows.append({
+            "market": market,
+            "category": category,
+            "platform": "roamler",
+            "target": 0,       # No target in API — merged from targets.yaml in tracker
+            "completed": completed,
+            "pct": 0,          # Recomputed after targets are merged in tracker
+            "last_updated": datetime.utcnow().isoformat(),
+            "status": "complete" if completed > 0 else "pending",
+            "date_from": date_from,
+            "date_to": date_to,
+            "skipped_jobs": len(skipped),
+        })
+
+    if not rows:
+        rows = _stub_data()
+    if skipped:
+        rows[0]["skipped_job_ids"] = "; ".join(skipped)
     return rows
 
 

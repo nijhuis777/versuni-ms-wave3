@@ -1,7 +1,13 @@
 """
-Versuni MS Wave III — Fieldwork Progress Tracker
-=================================================
-Streamlit dashboard showing live fieldwork completion across all platforms.
+Versuni MS Wave III — Project Hub
+==================================
+Central Streamlit dashboard for the Wave III fieldwork project.
+
+Tabs:
+  📊 Progress       — live fieldwork completion across all platforms
+  📋 Questionnaires — upload & compare questionnaire JSON files
+  📁 Data Hub       — upload, merge and commit Excel/CSV market data
+
 Run:  streamlit run progress/tracker.py
 Share: deploy to Streamlit Cloud for team access (Daniel, Paula, etc.)
 """
@@ -13,21 +19,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import yaml
 from datetime import date, datetime
 
 from progress.connectors import roamler, wiser, pinion
 from dashboard.auth import require_password
-from dashboard.branding import render_header, STATUS_COLORS, ROAMLER_ORANGE
+from dashboard.branding import render_header, inject_css, theme_selector, STATUS_COLORS, ROAMLER_ORANGE
 
 # ─── Page config ────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Versuni MS Wave III — Progress",
+    page_title="Versuni MS Wave III — Project Hub",
     page_icon="📊",
     layout="wide",
 )
 require_password()
+
+_theme = st.session_state.get("theme", "light")
+inject_css(_theme)
 
 FIELDWORK_START = "2026-03-09"
 CONFIG_DIR = Path(__file__).parent.parent / "config"
@@ -36,10 +44,11 @@ MARKET_NAMES = {
     "DE": "Germany", "FR": "France", "NL": "Netherlands",
     "UK": "United Kingdom", "TR": "Turkey",
     "AU": "Australia", "BR": "Brazil", "US": "United States",
+    "POL": "Poland",   # 2025 Wave II scope; not in Wave III
 }
 
 
-# ─── Targets ─────────────────────────────────────────────────────────────────
+# ─── Targets ──────────────────────────────────────────────────────────────────
 
 def load_targets_from_file() -> pd.DataFrame:
     """Load targets from config/targets.yaml, return as DataFrame."""
@@ -55,7 +64,7 @@ def load_targets_from_file() -> pd.DataFrame:
     return pd.DataFrame(rows) if rows else pd.DataFrame(columns=["market", "category", "target"])
 
 
-# ─── Data loading ─────────────────────────────────────────────────────────────
+# ─── Data loading ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=300)  # refresh every 5 minutes
 def load_all_progress(date_from: str, date_to: str) -> pd.DataFrame:
     rows = []
@@ -69,14 +78,12 @@ def load_all_progress(date_from: str, date_to: str) -> pd.DataFrame:
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown(
-        f"<div style='color:#FF6738;font-weight:700;font-size:0.85rem;"
-        f"text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px'>"
-        f"⚙️ Controls</div>",
-        unsafe_allow_html=True,
-    )
+    st.subheader("🎨 Theme")
+    _theme = theme_selector(sidebar=True)
+    inject_css(_theme)
 
-    # Date range
+    st.divider()
+
     st.subheader("📅 Date Range")
     d_from = st.date_input("From", value=date(2025, 1, 1),  key="date_from")
     d_to   = st.date_input("To",   value=date(2025, 12, 31), key="date_to")
@@ -86,7 +93,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Targets editor
     st.subheader("🎯 Visit Targets")
     st.caption("Edit below or update `config/targets.yaml`. Changes apply this session only.")
     default_targets = load_targets_from_file()
@@ -105,28 +111,25 @@ with st.sidebar:
 
     st.divider()
 
-    # API status
     st.subheader("🔌 API Status")
     roamler_ok = roamler.is_configured()
     wiser_ok   = wiser.is_configured()
     pinion_ok  = pinion.is_configured()
 
-    def _status_badge(ok: bool) -> str:
-        if ok:
-            return "🟢"
-        return "🔴"
+    def _badge(ok: bool) -> str:
+        return "🟢" if ok else "🔴"
 
     st.markdown(
-        f"{_status_badge(roamler_ok)} **Roamler** — EU/TR  \n"
-        f"{_status_badge(wiser_ok)}   **Wiser** — AU/US  \n"
-        f"{_status_badge(pinion_ok)}  **Pinion** — BR"
+        f"{_badge(roamler_ok)} **Roamler** — EU/TR  \n"
+        f"{_badge(wiser_ok)}   **Wiser** — AU/US  \n"
+        f"{_badge(pinion_ok)}  **Pinion** — BR"
     )
     if not roamler_ok:
         st.warning("Add ROAMLER_API_KEY to Streamlit secrets.", icon="⚠️")
 
 
 # ─── Header ───────────────────────────────────────────────────────────────────
-render_header(f"Wave III · {date_from_str} → {date_to_str}")
+render_header(f"Wave III · {date_from_str} → {date_to_str}", theme=_theme)
 
 col_refresh, col_ts = st.columns([1, 6])
 with col_refresh:
@@ -163,177 +166,189 @@ df["status"] = df["pct"].apply(
               "at_risk" if p >= 30 else "critical" if p > 0 else "pending"
 )
 
-# ─── KPI Summary ──────────────────────────────────────────────────────────────
-total_target     = int(df["target"].sum())
-total_completed  = int(df["completed"].sum())
-overall_pct      = round(total_completed / total_target * 100, 1) if total_target > 0 else None
-markets_active   = df[df["completed"] > 0]["market"].nunique()
-markets_complete = df[df["status"] == "complete"]["market"].nunique()
+# ─── Top-level tabs ────────────────────────────────────────────────────────────
+tab_progress, tab_questionnaires, tab_datahub = st.tabs([
+    "📊 Fieldwork Progress",
+    "📋 Questionnaires",
+    "📁 Data Hub",
+])
 
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric(
-    "Overall Progress",
-    f"{overall_pct}%" if overall_pct is not None else "—",
-    help="Requires targets to be set",
-)
-k2.metric(
-    "Completed Visits",
-    f"{total_completed:,}",
-    f"of {total_target:,}" if total_target > 0 else "target not set",
-)
-k3.metric("Markets Active",   markets_active,   f"of {df['market'].nunique()}")
-k4.metric("Markets Complete", markets_complete)
-k5.metric("Platforms",        df["platform"].nunique())
 
-st.divider()
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 1 — Fieldwork Progress
+# ══════════════════════════════════════════════════════════════════════════════
+with tab_progress:
 
-# ─── Filters ──────────────────────────────────────────────────────────────────
-col_f1, col_f2, col_f3 = st.columns(3)
-with col_f1:
-    sel_market   = st.selectbox("Market",   ["All"] + sorted(df["market"].unique().tolist()))
-with col_f2:
-    sel_category = st.selectbox("Category", ["All"] + sorted(df["category"].unique().tolist()))
-with col_f3:
-    sel_platform = st.selectbox("Platform", ["All"] + sorted(df["platform"].unique().tolist()))
+    # ─── KPI Summary ──────────────────────────────────────────────────────────
+    total_target     = int(df["target"].sum())
+    total_completed  = int(df["completed"].sum())
+    overall_pct      = round(total_completed / total_target * 100, 1) if total_target > 0 else None
+    markets_active   = df[df["completed"] > 0]["market"].nunique()
+    markets_complete = df[df["status"] == "complete"]["market"].nunique()
 
-filtered = df.copy()
-if sel_market   != "All": filtered = filtered[filtered["market"]   == sel_market]
-if sel_category != "All": filtered = filtered[filtered["category"] == sel_category]
-if sel_platform != "All": filtered = filtered[filtered["platform"] == sel_platform]
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric(
+        "Overall Progress",
+        f"{overall_pct}%" if overall_pct is not None else "—",
+        help="Requires targets to be set",
+    )
+    k2.metric(
+        "Completed Visits",
+        f"{total_completed:,}",
+        f"of {total_target:,}" if total_target > 0 else "target not set",
+    )
+    k3.metric("Markets Active",   markets_active,   f"of {df['market'].nunique()}")
+    k4.metric("Markets Complete", markets_complete)
+    k5.metric("Platforms",        df["platform"].nunique())
 
-# ─── Chart helpers ─────────────────────────────────────────────────────────────
-_targets_set = total_target > 0
+    st.divider()
 
-def _chart_layout(fig, height: int = 360):
-    fig.update_layout(
-        height=height,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font=dict(family="Inter, sans-serif", color="#333"),
-        margin=dict(l=8, r=8, t=8, b=8),
-        legend=dict(
+    # ─── Filters ──────────────────────────────────────────────────────────────
+    col_f1, col_f2, col_f3 = st.columns(3)
+    with col_f1:
+        sel_market = st.selectbox(
+            "Market", ["All"] + sorted(df["market"].unique().tolist()),
+            key="prog_market",
+        )
+    with col_f2:
+        sel_category = st.selectbox(
+            "Category", ["All"] + sorted(df["category"].unique().tolist()),
+            key="prog_category",
+        )
+    with col_f3:
+        sel_platform = st.selectbox(
+            "Platform", ["All"] + sorted(df["platform"].unique().tolist()),
+            key="prog_platform",
+        )
+
+    filtered = df.copy()
+    if sel_market   != "All": filtered = filtered[filtered["market"]   == sel_market]
+    if sel_category != "All": filtered = filtered[filtered["category"] == sel_category]
+    if sel_platform != "All": filtered = filtered[filtered["platform"] == sel_platform]
+
+    _targets_set = total_target > 0
+
+    # ─── Chart helpers ────────────────────────────────────────────────────────
+    def _chart_layout(fig, height: int = 360):
+        fig.update_layout(
+            height=height,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(family="Inter, sans-serif", color="#333"),
+            margin=dict(l=8, r=8, t=8, b=8),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", y=1.02,
+                xanchor="right", x=1,
+                font=dict(size=11),
+            ),
+            xaxis=dict(gridcolor="#F0F0F0", zerolinecolor="#E0E0E0"),
+            yaxis=dict(gridcolor="#F0F0F0", zerolinecolor="#E0E0E0"),
+        )
+        return fig
+
+    # ─── Bar chart: drill-down ────────────────────────────────────────────────
+    # No market selected → progress by market
+    # Market selected    → progress by category within that market
+    def _make_label(cdf: pd.DataFrame) -> pd.Series:
+        """Vectorised label — avoids pandas ValueError from apply() on certain dtypes."""
+        compl = cdf["completed"].fillna(0).astype(int)
+        pct   = cdf["pct"].fillna(0).round(0).astype(int)
+        with_target    = pct.astype(str) + "%  (" + compl.astype(str) + " visits)"
+        without_target = compl.astype(str) + " visits"
+        return with_target.where(cdf["target"] > 0, without_target)
+
+    def _status_vec(pct_series: pd.Series) -> pd.Series:
+        s = pd.Series("pending", index=pct_series.index)
+        s = s.where(pct_series <= 0,   "critical")
+        s = s.where(pct_series < 30,   "at_risk")
+        s = s.where(pct_series < 60,   "on_track")
+        s = s.where(pct_series < 100,  "complete")
+        return s
+
+    if sel_market == "All":
+        st.subheader("Progress by Market")
+        chart_df = (
+            filtered.groupby(["market", "market_name"])
+            .agg(target=("target", "sum"), completed=("completed", "sum"))
+            .reset_index()
+        )
+        chart_df["completed"] = chart_df["completed"].fillna(0).astype(int)
+        chart_df["pct"] = (chart_df["completed"] / chart_df["target"] * 100).where(
+            chart_df["target"] > 0, 0).round(1).fillna(0)
+        chart_df["status"] = _status_vec(chart_df["pct"])
+        chart_df["label"]  = _make_label(chart_df)
+        y_col = "market_name"
+
+    else:
+        st.subheader(f"Progress by Category — {MARKET_NAMES.get(sel_market, sel_market)}")
+        chart_df = (
+            filtered.groupby("category")
+            .agg(target=("target", "sum"), completed=("completed", "sum"))
+            .reset_index()
+        )
+        chart_df["completed"] = chart_df["completed"].fillna(0).astype(int)
+        chart_df["pct"] = (chart_df["completed"] / chart_df["target"] * 100).where(
+            chart_df["target"] > 0, 0).round(1).fillna(0)
+        chart_df["status"] = _status_vec(chart_df["pct"])
+        chart_df["label"]  = _make_label(chart_df)
+        y_col = "category"
+
+    if not chart_df.empty:
+        x_col = "pct" if _targets_set else "completed"
+        x_max = max(chart_df[x_col].max() * 1.25, 10)
+        fig_bar = px.bar(
+            chart_df.sort_values("completed", ascending=True),
+            x=x_col, y=y_col,
             orientation="h",
-            yanchor="bottom", y=1.02,
-            xanchor="right", x=1,
-            font=dict(size=11),
-        ),
-        xaxis=dict(gridcolor="#F0F0F0", zerolinecolor="#E0E0E0"),
-        yaxis=dict(gridcolor="#F0F0F0", zerolinecolor="#E0E0E0"),
+            text="label",
+            color="status",
+            color_discrete_map=STATUS_COLORS,
+            labels={"pct": "Completion %", "completed": "Completed visits",
+                    "market_name": "", "category": ""},
+        )
+        fig_bar.update_traces(textposition="outside", marker_line_width=0)
+        fig_bar = _chart_layout(fig_bar, height=max(280, len(chart_df) * 52))
+        fig_bar.update_layout(xaxis_range=[0, x_max], showlegend=True)
+        st.plotly_chart(fig_bar, use_container_width=True)
+    else:
+        st.info("No data for the selected filters.")
+
+    # ─── Detail table ──────────────────────────────────────────────────────────
+    st.subheader("Detail")
+    display_df = filtered[
+        ["market_name", "category", "platform", "completed", "target", "pct", "status"]
+    ].copy()
+    display_df.columns = ["Market", "Category", "Platform", "Completed", "Target", "%", "Status"]
+    display_df = display_df.sort_values(["Market", "Category"])
+    st.dataframe(
+        display_df.style.background_gradient(subset=["%"], cmap="RdYlGn", vmin=0, vmax=100),
+        use_container_width=True,
+        hide_index=True,
     )
-    return fig
 
 
-# ─── Progress by Market ───────────────────────────────────────────────────────
-st.subheader("Progress by Market")
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 2 — Questionnaires
+# ══════════════════════════════════════════════════════════════════════════════
+with tab_questionnaires:
+    from progress.questionnaire_manager import render_questionnaire_tab
+    render_questionnaire_tab()
 
-market_df = (
-    filtered.groupby(["market", "market_name"])
-    .agg(target=("target", "sum"), completed=("completed", "sum"))
-    .reset_index()
-)
-market_df["pct"] = (market_df["completed"] / market_df["target"] * 100).where(
-    market_df["target"] > 0, 0).round(1).fillna(0)
-market_df["status"] = market_df["pct"].apply(
-    lambda p: "complete" if p >= 100 else "on_track" if p >= 60 else
-              "at_risk" if p >= 30 else "critical" if p > 0 else "pending"
-)
-market_df["label"] = market_df.apply(
-    lambda r: f"{r['pct']:.0f}%  ({int(r['completed'])} visits)" if r["target"] > 0
-              else f"{int(r['completed'])} visits",
-    axis=1,
-)
 
-x_col = "pct" if _targets_set else "completed"
-x_max = max((market_df[x_col].max() if not market_df.empty else 10) * 1.25, 10)
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 3 — Data Hub
+# ══════════════════════════════════════════════════════════════════════════════
+with tab_datahub:
+    from progress.data_hub import render_data_hub_tab
+    render_data_hub_tab()
 
-fig_market = px.bar(
-    market_df.sort_values("completed", ascending=True),
-    x=x_col, y="market_name",
-    orientation="h",
-    text="label",
-    color="status",
-    color_discrete_map=STATUS_COLORS,
-    labels={
-        "pct": "Completion %", "completed": "Completed visits", "market_name": "",
-    },
-)
-fig_market.update_traces(textposition="outside", marker_line_width=0)
-fig_market = _chart_layout(fig_market, height=max(280, len(market_df) * 52))
-fig_market.update_layout(xaxis_range=[0, x_max], showlegend=True)
-st.plotly_chart(fig_market, use_container_width=True)
-
-# ─── Progress by Category ─────────────────────────────────────────────────────
-st.subheader("Progress by Category")
-
-cat_df = (
-    filtered.groupby("category")
-    .agg(target=("target", "sum"), completed=("completed", "sum"))
-    .reset_index()
-)
-cat_df["pct"] = (cat_df["completed"] / cat_df["target"] * 100).where(
-    cat_df["target"] > 0, 0).round(1).fillna(0)
-cat_df["label"] = cat_df.apply(
-    lambda r: f"{r['pct']:.0f}%  ({int(r['completed'])})" if r["target"] > 0
-              else f"{int(r['completed'])} visits",
-    axis=1,
-)
-
-y_col = "pct" if _targets_set else "completed"
-y_max = max((cat_df[y_col].max() if not cat_df.empty else 10) * 1.25, 10)
-
-fig_cat = px.bar(
-    cat_df.sort_values("completed"),
-    x="category", y=y_col,
-    text="label",
-    color=y_col,
-    color_continuous_scale=[
-        [0.0, "#E74C3C"],
-        [0.3, ROAMLER_ORANGE],
-        [0.6, "#3498DB"],
-        [1.0, "#2ECC71"],
-    ],
-    labels={"pct": "Completion %", "completed": "Completed visits", "category": ""},
-)
-fig_cat.update_traces(textposition="outside", marker_line_width=0)
-fig_cat = _chart_layout(fig_cat, height=360)
-fig_cat.update_layout(
-    yaxis_range=[0, y_max],
-    coloraxis_showscale=False,
-)
-st.plotly_chart(fig_cat, use_container_width=True)
-
-# ─── Detail table ─────────────────────────────────────────────────────────────
-st.subheader("Detail")
-
-display_df = filtered[
-    ["market_name", "category", "platform", "completed", "target", "pct", "status"]
-].copy()
-display_df.columns = ["Market", "Category", "Platform", "Completed", "Target", "%", "Status"]
-display_df = display_df.sort_values(["Market", "Category"])
-
-st.dataframe(
-    display_df.style.background_gradient(subset=["%"], cmap="RdYlGn", vmin=0, vmax=100),
-    use_container_width=True,
-    hide_index=True,
-)
-
-# ─── Manual upload fallback ───────────────────────────────────────────────────
-with st.expander("📁 Manual data upload  (Wiser / Pinion CSV)"):
-    st.markdown(
-        "If Wiser or Pinion doesn't have an API yet, upload their progress export here.  \n"
-        "Expected columns: `market, category, target, completed`"
-    )
-    uploaded = st.file_uploader("Upload CSV", type="csv")
-    if uploaded:
-        manual_df = pd.read_csv(uploaded)
-        st.dataframe(manual_df)
-        st.success(f"Loaded {len(manual_df)} rows from manual upload.")
 
 # ─── Footer ───────────────────────────────────────────────────────────────────
 st.markdown(
-    f"<div style='text-align:center;color:#aaa;font-size:0.75rem;margin-top:2rem;'>"
-    f"Versuni Mystery Shopping Wave III &nbsp;·&nbsp; "
-    f"Roamler + Wiser + Pinion &nbsp;·&nbsp; "
-    f"Internal use only</div>",
+    "<div style='text-align:center;color:#aaa;font-size:0.75rem;margin-top:2rem;'>"
+    "Versuni Mystery Shopping Wave III &nbsp;·&nbsp; "
+    "Roamler + Wiser + Pinion &nbsp;·&nbsp; "
+    "Internal use only</div>",
     unsafe_allow_html=True,
 )
