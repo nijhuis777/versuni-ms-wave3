@@ -203,18 +203,23 @@ _JOBS_PAGE_SIZE = 200   # explicit large page size to avoid missing jobs
 
 
 def fetch_all_jobs() -> list[dict]:
-    """Fetch all Roamler jobs (paginated).
+    """Fetch all Roamler jobs, paginating until the API is exhausted.
 
-    Requests _JOBS_PAGE_SIZE jobs per page and stops only when the API
-    returns an empty batch or a batch smaller than the page size (last page).
-    Also guards against APIs that ignore the page parameter by tracking
-    seen job IDs — if a batch contains only already-seen jobs we stop.
+    Never uses batch size to decide when to stop — the API page size is
+    unknown and may differ from any value we request.  Instead we stop when:
+      1. The API returns an empty batch (clean end-of-data), OR
+      2. Every job in the batch was already seen (API ignores the page param
+         and keeps returning the same first page).
+
+    A hard cap of 50 pages guards against infinite loops.
     """
     results = []
     seen_ids: set[str] = set()
     page = 0
     base = _base_url()
-    while True:
+    MAX_PAGES = 50
+
+    while page < MAX_PAGES:
         resp = requests.get(
             f"{base}/v1/Jobs",
             headers=get_headers(),
@@ -226,19 +231,16 @@ def fetch_all_jobs() -> list[dict]:
         batch = data if isinstance(data, list) else data.get("jobs", data.get("Jobs", []))
 
         if not batch:
-            break  # empty page → done
+            break  # empty page → no more jobs
 
         new_jobs = [j for j in batch if _job_id(j) not in seen_ids]
         if not new_jobs:
-            break  # API returned only already-seen jobs → no real pagination
+            break  # all jobs in this batch already seen → no real next page
 
         for j in new_jobs:
             seen_ids.add(_job_id(j))
         results.extend(new_jobs)
-
-        if len(batch) < _JOBS_PAGE_SIZE:
-            break  # partial page → this was the last page
-        page += 1
+        page += 1  # always advance — never stop based on batch size
 
     return results
 
