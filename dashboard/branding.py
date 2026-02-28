@@ -346,42 +346,25 @@ def render_header(subtitle: str = "Wave III — Fieldwork Progress",
         f'<span style="font-size:1rem;font-weight:700;color:{ROAMLER_ORANGE};">ROAMLER</span>'
     )
 
-    st.markdown(
-        f"""
-        <div class="versuni-header">
-            <!-- Left: Versuni logo + title -->
-            <div style="display:flex;align-items:center;gap:1rem;">
-                <div style="background:white;padding:7px 11px;border-radius:6px;
-                            display:flex;align-items:center;justify-content:center;
-                            box-shadow:0 1px 4px rgba(0,0,0,0.15);">
-                    {versuni_html}
-                </div>
-                <div>
-                    <div style="color:white;font-size:1.05rem;font-weight:700;
-                                letter-spacing:0.02em;line-height:1.25;
-                                text-shadow:0 1px 3px rgba(0,0,0,0.3);">
-                        Mystery Shopping
-                    </div>
-                    <div style="color:rgba(255,255,255,0.65);font-size:0.75rem;
-                                font-weight:400;letter-spacing:0.04em;">
-                        {subtitle}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right: powered by Roamler -->
-            <div style="display:flex;align-items:center;gap:0.7rem;">
-                <span style="color:rgba(255,255,255,0.5);font-size:0.7rem;
-                             font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">
-                    powered by
-                </span>
-                <div style="background:white;padding:7px 13px;border-radius:6px;
-                            display:flex;align-items:center;justify-content:center;
-                            box-shadow:0 1px 4px rgba(0,0,0,0.15);">
-                    {roamler_html}
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    html = (
+        f'<div class="versuni-header">'
+        f'<div style="display:flex;align-items:center;gap:1rem;">'
+        f'<div style="background:white;padding:7px 11px;border-radius:6px;'
+        f'display:flex;align-items:center;justify-content:center;'
+        f'box-shadow:0 1px 4px rgba(0,0,0,0.15);">{versuni_html}</div>'
+        f'<div>'
+        f'<div style="color:white;font-size:1.05rem;font-weight:700;'
+        f'letter-spacing:0.02em;line-height:1.25;'
+        f'text-shadow:0 1px 3px rgba(0,0,0,0.3);">Mystery Shopping</div>'
+        f'<div style="color:rgba(255,255,255,0.65);font-size:0.75rem;'
+        f'font-weight:400;letter-spacing:0.04em;">{subtitle}</div>'
+        f'</div></div>'
+        f'<div style="display:flex;align-items:center;gap:0.7rem;">'
+        f'<span style="color:rgba(255,255,255,0.5);font-size:0.7rem;'
+        f'font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">powered by</span>'
+        f'<div style="background:white;padding:7px 13px;border-radius:6px;'
+        f'display:flex;align-items:center;justify-content:center;'
+        f'box-shadow:0 1px 4px rgba(0,0,0,0.15);">{roamler_html}</div>'
+        f'</div></div>'
     )
+    st.html(html)

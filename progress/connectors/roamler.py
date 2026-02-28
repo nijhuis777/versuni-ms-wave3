@@ -146,6 +146,9 @@ def _parse_category(job: dict) -> str:
         for kw, cat in CATEGORY_KEYWORDS.items():
             if kw in cat_raw:
                 return cat
+        # No keyword match — return the raw segment so unrecognised categories
+        # are visible in the dashboard rather than silently dropped.
+        return parts[-2].strip() or "??"
     # Fallback: scan title
     title = (job.get("title") or "").lower()
     for kw, cat in CATEGORY_KEYWORDS.items():
@@ -278,8 +281,8 @@ def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
     for job in jobs:
         market = _parse_market(job)
         category = _parse_category(job)
-        if market == "??" or category == "??":
-            continue
+        if market == "??":
+            continue  # Can't assign to a market — skip
         jid = _job_id(job)
         try:
             subs = fetch_submissions(jid, date_from, date_to)
