@@ -458,23 +458,24 @@ with tab_progress:
                     f"markets: {', '.join(meta['markets_found'])} — "
                     f"skipped (unknown market): {meta['skipped_unknown_market']}"
                 )
+                # ── Raw API response inspector — always visible ────────────
+                import pandas as _pd
+                st.divider()
+                st.caption("**Raw API response** — shows the exact JSON /v1/Jobs returns. "
+                           "Use this when 0 jobs are fetched to find the correct response key.")
+                if st.button("🔬 Inspect raw /v1/Jobs response", key="raw_api_test"):
+                    with st.spinner("Calling /v1/Jobs page 1…"):
+                        raw = roamler.raw_jobs_page(page=1)
+                    st.json(raw)
+
                 if debug_rows:
-                    import pandas as _pd
+                    st.divider()
                     dbg = _pd.DataFrame(debug_rows)
                     st.dataframe(
                         dbg[["id", "market", "category", "workingTitle", "title"]],
                         use_container_width=True,
                         hide_index=True,
                     )
-
-                    # ── Raw API response inspector ─────────────────────────
-                    st.divider()
-                    st.caption("**Raw API response** — shows the exact JSON /v1/Jobs returns. "
-                               "Use this when 0 jobs are fetched to find the right response key.")
-                    if st.button("🔬 Inspect raw /v1/Jobs response", key="raw_api_test"):
-                        with st.spinner("Calling /v1/Jobs page 1…"):
-                            raw = roamler.raw_jobs_page(page=1)
-                        st.json(raw)
 
                     # ── Raw get_progress() diagnostic ─────────────────────
                     st.divider()
@@ -528,7 +529,6 @@ with tab_progress:
 
                         if subs_rows:
                             sdf = _pd.DataFrame(subs_rows)
-                            # Human-readable submission label
                             def _sub_label(row):
                                 s = row.get("submissions", -2)
                                 if s == -1:  return "skipped (??)"
