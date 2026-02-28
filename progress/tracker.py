@@ -92,12 +92,15 @@ def save_targets_to_file(new_targets: pd.DataFrame) -> None:
 
 
 # ─── Data loading ──────────────────────────────────────────────────────────────
-@st.cache_data(ttl=300)  # refresh every 5 minutes
+@st.cache_data(ttl=900)  # cache for 15 minutes
 def load_all_progress(date_from: str, date_to: str) -> pd.DataFrame:
-    rows = []
-    rows += roamler.get_progress(date_from, date_to)
-    rows += wiser.get_progress(date_from, date_to)
-    rows += pinion.get_progress(date_from, date_to)
+    from concurrent.futures import ThreadPoolExecutor
+    # Run all three connectors in parallel — Wiser/Pinion complete while Roamler fetches
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_roamler = pool.submit(roamler.get_progress, date_from, date_to)
+        f_wiser   = pool.submit(wiser.get_progress,   date_from, date_to)
+        f_pinion  = pool.submit(pinion.get_progress,  date_from, date_to)
+        rows = f_roamler.result() + f_wiser.result() + f_pinion.result()
     df = pd.DataFrame(rows)
     df["market_name"] = df["market"].map(MARKET_NAMES).fillna(df["market"])
     return df

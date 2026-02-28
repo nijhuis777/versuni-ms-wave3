@@ -15,6 +15,7 @@ Date filter is controlled via .env or Streamlit secrets:
 
 import os
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -515,21 +516,26 @@ def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
         rows[0]["error"] = str(e)
         return rows
 
-    # Fetch submissions per job — each job is independent; a failing job is
-    # logged and skipped rather than aborting the entire data pull.
-    for job in jobs:
-        market = _parse_market(job)
+    # Filter to jobs with a known market before fetching submissions.
+    valid_jobs = [j for j in jobs if _parse_market(j) != "??"]
+
+    def _fetch_one(job):
+        market   = _parse_market(job)
         category = _parse_category(job)
-        if market == "??":
-            continue  # Can't assign to a market — skip
-        jid = _job_id(job)
+        jid      = _job_id(job)
         try:
             subs = fetch_submissions(jid, date_from, date_to)
-        except Exception as job_err:
-            skipped.append(f"{jid} ({market}/{category}): {job_err}")
-            continue
-        key = (market, category)
-        counts[key] = counts.get(key, 0) + len(subs)
+            return (market, category), len(subs), None
+        except Exception as err:
+            return (market, category), 0, f"{jid} ({market}/{category}): {err}"
+
+    # Fetch all jobs in parallel — ~10× faster than sequential for 50+ jobs.
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        for key, count, error in pool.map(_fetch_one, valid_jobs):
+            if error:
+                skipped.append(error)
+            else:
+                counts[key] = counts.get(key, 0) + count
 
     rows = []
     for (market, category), completed in counts.items():
