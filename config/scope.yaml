@@ -69,33 +69,44 @@ categories:
 
   Airfryer:
     label: Airfryer
-    wave2_json: null
+    wave2_json: Versuni_Airfryer.json
     markets: [NL, FR, DE, UK, AU, BR]
 
   Handstick_VC_Wet_Dry:
     label: Handstick Vacuum Cleaner (Wet & Dry)
-    wave2_json: null
+    wave2_json: "Versuni_Handsticks W&D.json"
     markets: [TR]
 
   Handstick_VC:
-    label: Handstick Vacuum Cleaner
-    wave2_json: null
+    label: Handstick Vacuum Cleaner (Dry)
+    wave2_json: Versuni_Handsticks_Dry.json
     markets: [TR]
 
   Steam_Iron:
     label: Steam Iron
-    wave2_json: null
+    wave2_json: Versuni_Steam_Iron.json
     markets: [TR]
 
   All_in_One:
-    label: All-in-One Garment Care
-    wave2_json: null
+    label: All-in-One Garment Care (Steam Generator)
+    wave2_json: Versuni_Steam_Generator.json  # confirm this is correct mapping
     markets: [AU]
 
   Handheld_Steamer:
     label: Handheld Steamer
-    wave2_json: null
+    wave2_json: Versuni_Handheld_steamer.json
     markets: [AU]
+
+# Available but NOT in Wave III scope (kept for reference)
+out_of_scope_categories:
+  SAEM:
+    label: Semi-Automatic Espresso Machines
+    wave2_json: Versuni_SAEM.json
+    note: In Korea scope file but Korea not in Wave III
+  RVC:
+    label: Robot Vacuum Cleaner
+    wave2_json: Versuni_RVC.json
+    note: Not in any confirmed Wave III market
 
 kpis:
   KPI1: Availability
