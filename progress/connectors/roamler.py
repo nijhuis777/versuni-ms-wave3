@@ -321,7 +321,7 @@ def raw_submissions_test(job_id: str, date_from: str, date_to: str) -> dict:
     return results
 
 
-def fetch_submission_detail(submission_id: str | int) -> dict:
+def fetch_submission_detail(submission_id) -> dict:
     """Fetch full detail for a single submission, including answers and photos.
 
     Endpoint: GET /v1/submissions/{id}?includeAnswers=true&includeQuestions=true
