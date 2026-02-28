@@ -314,6 +314,28 @@ def pull_all_submissions(date_from: str = None, date_to: str = None) -> list[dic
     return all_submissions
 
 
+def debug_jobs() -> list[dict]:
+    """Return all jobs with their raw workingTitle and parsed market/category.
+    Used by the dashboard debug expander to diagnose missing submissions.
+    """
+    if not is_configured():
+        return []
+    try:
+        jobs = fetch_all_jobs()
+    except Exception as e:
+        return [{"error": str(e)}]
+    return [
+        {
+            "id":            _job_id(j),
+            "workingTitle":  j.get("workingTitle", ""),
+            "title":         j.get("title", ""),
+            "market":        _parse_market(j),
+            "category":      _parse_category(j),
+        }
+        for j in jobs
+    ]
+
+
 def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
     """
     Returns unified progress rows for all Roamler markets.
