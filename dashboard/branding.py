@@ -149,7 +149,7 @@ header[data-testid="stHeader"] button {{
 
 /* ── Shift header right when sidebar is open ─────────────────────────────── */
 [data-testid="stSidebar"][aria-expanded="true"] ~ * .versuni-header {{
-    left: 21rem !important;
+    left: 17rem !important;
 }}
 
 /* ── Push main content below both headers ────────────────────────────────── */
@@ -347,7 +347,7 @@ def render_header(subtitle: str = "Wave III — Fieldwork Progress",
     )
     roamler_html = (
         f'<img src="{_img_b64(roamler_path)}" '
-        f'style="max-height:38px;width:auto;display:block;">'
+        f'style="max-height:38px;max-width:160px;width:auto;display:block;object-fit:contain;">'
         if roamler_path else
         f'<span style="font-size:1rem;font-weight:700;color:{ROAMLER_ORANGE};">ROAMLER</span>'
     )
