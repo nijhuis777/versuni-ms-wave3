@@ -221,7 +221,7 @@ def _job_id(job: dict) -> str:
 
 # ─── API calls ────────────────────────────────────────────────────────────────
 
-_JOBS_PAGE_SIZE = 200   # explicit large page size to avoid missing jobs
+_JOBS_PAGE_SIZE = 50   # only used by raw_jobs_page() diagnostic; NOT sent in production calls
 
 
 def raw_jobs_page(page: int = 1) -> dict:
@@ -276,78 +276,46 @@ def raw_jobs_page(page: int = 1) -> dict:
 
 
 def fetch_all_jobs() -> list[dict]:
-    """Fetch all Roamler jobs, paginating until the API is exhausted.
+    """Fetch all Roamler jobs in a single call (no pagination params).
 
-    Never uses batch size to decide when to stop — the API page size is
-    unknown and may differ from any value we request.  Instead we stop when:
-      1. The API returns an empty batch (clean end-of-data), OR
-      2. Every job in the batch was already seen (API ignores the page param
-         and keeps returning the same first page).
-
-    A hard cap of 50 pages guards against infinite loops.
+    The Roamler Customer API returns all jobs when called without page/take
+    parameters.  Passing page= or take= causes the API to return an empty
+    list — discovered via the raw inspector diagnostic.
     """
-    results = []
-    seen_ids: set[str] = set()
-    page = 1          # Roamler API is 1-indexed (page=0 == page=1, causing duplicates)
     base = _base_url()
-    MAX_PAGES = 50
-
-    while page <= MAX_PAGES:
-        resp = requests.get(
-            f"{base}/v1/Jobs",
-            headers=get_headers(),
-            params={"page": page, "take": _JOBS_PAGE_SIZE},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        batch = data if isinstance(data, list) else data.get("jobs", data.get("Jobs", []))
-
-        if not batch:
-            break  # empty page → no more jobs
-
-        new_jobs = [j for j in batch if _job_id(j) not in seen_ids]
-        if not new_jobs:
-            break  # all jobs in this batch already seen → no real next page
-
-        for j in new_jobs:
-            seen_ids.add(_job_id(j))
-        results.extend(new_jobs)
-        page += 1  # always advance — never stop based on batch size
-
-    return results
+    resp = requests.get(
+        f"{base}/v1/Jobs",
+        headers=get_headers(),
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data if isinstance(data, list) else data.get("jobs", data.get("Jobs", []))
 
 
 def fetch_submissions(job_id: str, date_from: str = None, date_to: str = None) -> list[dict]:
-    """Fetch all submissions for a single job within the date window."""
+    """Fetch all submissions for a single job within the date window.
+
+    Only fromDate/toDate are sent — page/take break the API (same as /Jobs).
+    """
     if date_from is None:
         date_from = _get_secret("ROAMLER_DATE_FROM", "2026-03-09")
     if date_to is None:
         date_to = _get_secret("ROAMLER_DATE_TO", "2026-06-30")
 
-    results = []
-    page = 1
     base = _base_url()
-    while True:
-        resp = requests.get(
-            f"{base}/v1/Jobs/{job_id}/Submissions",
-            headers=get_headers(),
-            params={
-                "fromDate": f"{date_from}T00:00:00",
-                "toDate": f"{date_to}T23:59:59",
-                "page": page,
-                "take": 1000,
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        batch = data if isinstance(data, list) else data.get("submissions", data.get("Submissions", []))
-        results.extend(batch)
-        if len(batch) < 1000:
-            break
-        page += 1
-    return results
+    resp = requests.get(
+        f"{base}/v1/Jobs/{job_id}/Submissions",
+        headers=get_headers(),
+        params={
+            "fromDate": f"{date_from}T00:00:00",
+            "toDate": f"{date_to}T23:59:59",
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data if isinstance(data, list) else data.get("submissions", data.get("Submissions", []))
 
 
 def pull_all_submissions(date_from: str = None, date_to: str = None) -> list[dict]:
