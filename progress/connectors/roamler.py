@@ -296,7 +296,10 @@ def fetch_all_jobs() -> list[dict]:
 def fetch_submissions(job_id: str, date_from: str = None, date_to: str = None) -> list[dict]:
     """Fetch all submissions for a single job within the date window.
 
-    Only fromDate/toDate are sent — page/take break the API (same as /Jobs).
+    The API defaults to 50 results.  Sending take=10000 (without page)
+    raises the limit so we get everything in one call.  The page param
+    is NOT sent — it causes empty responses on the /Jobs endpoint and
+    likely does the same here.
     """
     if date_from is None:
         date_from = _get_secret("ROAMLER_DATE_FROM", "2026-03-09")
@@ -310,6 +313,7 @@ def fetch_submissions(job_id: str, date_from: str = None, date_to: str = None) -
         params={
             "fromDate": f"{date_from}T00:00:00",
             "toDate": f"{date_to}T23:59:59",
+            "take": 10000,
         },
         timeout=60,
     )
