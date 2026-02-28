@@ -186,64 +186,50 @@ with tab_progress:
     markets_active   = df[df["completed"] > 0]["market"].nunique()
     markets_complete = df[df["status"] == "complete"]["market"].nunique()
 
-    k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric(
-        "Overall Progress",
-        f"{overall_pct}%" if overall_pct is not None else "—",
-        help="Requires targets to be set",
-    )
-    k2.metric(
-        "Completed Visits",
-        f"{total_completed:,}",
-        f"of {total_target:,}" if total_target > 0 else "target not set",
-    )
-    k3.metric("Markets Active",   markets_active,   f"of {df['market'].nunique()}")
-    k4.metric("Markets Complete", markets_complete)
-    k5.metric("Platforms",        df["platform"].nunique())
+    k1, k2, k3, k4, k5, k6, k7, k8 = st.columns(8)
+    k1.metric("Progress",         f"{overall_pct}%" if overall_pct is not None else "—")
+    k2.metric("Completed",        f"{total_completed:,}")
+    k3.metric("Target",           f"{total_target:,}" if total_target > 0 else "—")
+    k4.metric("Markets Active",   markets_active)
+    k5.metric("Markets Complete", markets_complete)
+    k6.metric("Platforms",        df["platform"].nunique())
 
-    st.divider()
-
-    # ─── Filters ──────────────────────────────────────────────────────────────
-    col_f1, col_f2, col_f3 = st.columns(3)
-    with col_f1:
+    with k7:
         sel_market = st.selectbox(
             "Market", ["All"] + sorted(df["market"].unique().tolist()),
-            key="prog_market",
+            key="prog_market", label_visibility="collapsed",
         )
-    with col_f2:
-        sel_category = st.selectbox(
-            "Category", ["All"] + sorted(df["category"].unique().tolist()),
-            key="prog_category",
-        )
-    with col_f3:
+        st.caption("Market")
+    with k8:
         sel_platform = st.selectbox(
             "Platform", ["All"] + sorted(df["platform"].unique().tolist()),
-            key="prog_platform",
+            key="prog_platform", label_visibility="collapsed",
         )
+        st.caption("Platform")
 
     filtered = df.copy()
     if sel_market   != "All": filtered = filtered[filtered["market"]   == sel_market]
-    if sel_category != "All": filtered = filtered[filtered["category"] == sel_category]
     if sel_platform != "All": filtered = filtered[filtered["platform"] == sel_platform]
 
     _targets_set = total_target > 0
 
     # ─── Chart helpers ────────────────────────────────────────────────────────
-    def _chart_layout(fig, height: int = 360):
+    def _chart_layout(fig, height: int = 260):
         fig.update_layout(
             height=height,
             plot_bgcolor="white",
             paper_bgcolor="white",
-            font=dict(family="Inter, sans-serif", color="#333"),
-            margin=dict(l=8, r=8, t=8, b=8),
+            font=dict(family="Inter, sans-serif", color="#444", size=11),
+            margin=dict(l=4, r=110, t=4, b=4),
             legend=dict(
                 orientation="h",
-                yanchor="bottom", y=1.02,
+                yanchor="bottom", y=1.01,
                 xanchor="right", x=1,
-                font=dict(size=11),
+                font=dict(size=10),
+                bgcolor="rgba(0,0,0,0)",
             ),
-            xaxis=dict(gridcolor="#F0F0F0", zerolinecolor="#E0E0E0"),
-            yaxis=dict(gridcolor="#F0F0F0", zerolinecolor="#E0E0E0"),
+            xaxis=dict(gridcolor="#F4F4F4", zerolinecolor="#E8E8E8", tickfont=dict(size=10)),
+            yaxis=dict(gridcolor="#F4F4F4", zerolinecolor="#E8E8E8", tickfont=dict(size=10)),
         )
         return fig
 
@@ -296,7 +282,7 @@ with tab_progress:
 
     if not chart_df.empty:
         x_col = "pct" if _targets_set else "completed"
-        x_max = max(chart_df[x_col].max() * 1.25, 10)
+        x_max = max(chart_df[x_col].max() * 1.35, 10)
         fig_bar = px.bar(
             chart_df.sort_values("completed", ascending=True),
             x=x_col, y=y_col,
@@ -307,25 +293,29 @@ with tab_progress:
             labels={"pct": "Completion %", "completed": "Completed visits",
                     "market_name": "", "category": ""},
         )
-        fig_bar.update_traces(textposition="outside", marker_line_width=0)
-        fig_bar = _chart_layout(fig_bar, height=max(280, len(chart_df) * 52))
+        fig_bar.update_traces(
+            textposition="outside",
+            marker_line_width=0,
+            textfont=dict(size=10),
+        )
+        fig_bar = _chart_layout(fig_bar, height=max(180, len(chart_df) * 36))
         fig_bar.update_layout(xaxis_range=[0, x_max], showlegend=True)
         st.plotly_chart(fig_bar, use_container_width=True)
     else:
         st.info("No data for the selected filters.")
 
     # ─── Detail table ──────────────────────────────────────────────────────────
-    st.subheader("Detail")
-    display_df = filtered[
-        ["market_name", "category", "platform", "completed", "target", "pct", "status"]
-    ].copy()
-    display_df.columns = ["Market", "Category", "Platform", "Completed", "Target", "%", "Status"]
-    display_df = display_df.sort_values(["Market", "Category"])
-    st.dataframe(
-        display_df.style.background_gradient(subset=["%"], cmap="RdYlGn", vmin=0, vmax=100),
-        use_container_width=True,
-        hide_index=True,
-    )
+    with st.expander(f"📋 Detail table  ({len(filtered)} rows)", expanded=False):
+        display_df = filtered[
+            ["market_name", "category", "platform", "completed", "target", "pct", "status"]
+        ].copy()
+        display_df.columns = ["Market", "Category", "Platform", "Completed", "Target", "%", "Status"]
+        display_df = display_df.sort_values(["Market", "Category"])
+        st.dataframe(
+            display_df.style.background_gradient(subset=["%"], cmap="RdYlGn", vmin=0, vmax=100),
+            use_container_width=True,
+            hide_index=True,
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
