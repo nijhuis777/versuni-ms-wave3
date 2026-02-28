@@ -22,6 +22,16 @@ load_dotenv()
 
 ROAMLER_MARKETS = ["DE", "FR", "NL", "UK", "TR", "AU", "BR", "US", "POL"]
 
+# Some job titles use em/en dashes instead of plain hyphens — normalise first.
+_DASH_NORM = str.maketrans({'\u2013': '-', '\u2014': '-', '\u2012': '-'})
+
+def _norm(s: str) -> str:
+    """Replace en/em dashes with plain hyphens for consistent ' - ' splitting."""
+    return s.translate(_DASH_NORM)
+
+# Roamler uses 'PL' for Poland; our canonical code is 'POL'.
+_MARKET_ALIASES: dict[str, str] = {"PL": "POL"}
+
 # Map keywords found in workingTitle → canonical category name.
 # ORDER MATTERS: more specific strings must come before shorter/overlapping ones.
 CATEGORY_KEYWORDS = {
@@ -115,29 +125,40 @@ def is_configured() -> bool:
 
 # ─── Parsing helpers ──────────────────────────────────────────────────────────
 
-def _parse_market(job: dict) -> str:
-    """Extract 2-letter market code from workingTitle or title.
+def _resolve_market(code: str) -> str | None:
+    """Return canonical market code or None if unknown."""
+    code = _MARKET_ALIASES.get(code, code)
+    return code if code in ROAMLER_MARKETS else None
 
-    Tries last segment first (expected format), then scans all segments,
-    then falls back to the title field — handles any segment ordering.
+
+def _parse_market(job: dict) -> str:
+    """Extract market code from workingTitle or title.
+
+    Normalises em/en dashes to plain hyphens before splitting so titles like
+    '2025 - January - Versuni – Handheld Steamer – FR' parse correctly.
+    Resolves 'PL' → 'POL' via _MARKET_ALIASES.
     """
-    wt = job.get("workingTitle") or ""
+    wt = _norm(job.get("workingTitle") or "")
     parts = [p.strip() for p in wt.split(" - ")]
 
     # 1. Last segment (canonical position)
-    if parts and parts[-1].upper() in ROAMLER_MARKETS:
-        return parts[-1].upper()
+    if parts:
+        m = _resolve_market(parts[-1].upper())
+        if m:
+            return m
 
     # 2. Any segment — handles non-standard orderings
     for p in parts:
-        if p.upper() in ROAMLER_MARKETS:
-            return p.upper()
+        m = _resolve_market(p.upper())
+        if m:
+            return m
 
     # 3. Scan title field
-    title = (job.get("title") or "").upper()
-    for m in ROAMLER_MARKETS:
-        if title == m or title.endswith(f" {m}") or f" {m} " in f" {title} ":
-            return m
+    all_codes = set(ROAMLER_MARKETS) | set(_MARKET_ALIASES)
+    title = _norm(job.get("title") or "").upper()
+    for code in all_codes:
+        if title == code or title.endswith(f" {code}") or f" {code} " in f" {title} ":
+            return _MARKET_ALIASES.get(code, code)
 
     return "??"
 
@@ -159,7 +180,7 @@ def _parse_category(job: dict) -> str:
     no keyword matches so unrecognised categories surface in the dashboard
     rather than being silently dropped.
     """
-    wt = job.get("workingTitle") or ""
+    wt = _norm(job.get("workingTitle") or "")
     parts = [p.strip() for p in wt.split(" - ")]
 
     # 1. Second-to-last segment (canonical position)
@@ -170,18 +191,19 @@ def _parse_category(job: dict) -> str:
                 return cat
 
     # 2. All segments — handles non-standard orderings
+    all_market_codes = set(ROAMLER_MARKETS) | set(_MARKET_ALIASES)
     for p in parts:
         p_lower = p.lower()
-        if (p.upper() in ROAMLER_MARKETS   # skip market codes
-                or p.isdigit()              # skip year numbers
-                or p_lower in _SKIP_WORDS): # skip months / brand names
+        if (p.upper() in all_market_codes  # skip market codes
+                or p.isdigit()             # skip year numbers
+                or p_lower in _SKIP_WORDS):# skip months / brand names
             continue
         for kw, cat in CATEGORY_KEYWORDS.items():
             if kw in p_lower:
                 return cat
 
     # 3. Fallback: scan title field
-    title = (job.get("title") or "").lower()
+    title = _norm(job.get("title") or "").lower()
     for kw, cat in CATEGORY_KEYWORDS.items():
         if kw in title:
             return cat
