@@ -199,25 +199,47 @@ def _job_id(job: dict) -> str:
 
 # ─── API calls ────────────────────────────────────────────────────────────────
 
+_JOBS_PAGE_SIZE = 200   # explicit large page size to avoid missing jobs
+
+
 def fetch_all_jobs() -> list[dict]:
-    """Fetch all Roamler jobs (paginated)."""
+    """Fetch all Roamler jobs (paginated).
+
+    Requests _JOBS_PAGE_SIZE jobs per page and stops only when the API
+    returns an empty batch or a batch smaller than the page size (last page).
+    Also guards against APIs that ignore the page parameter by tracking
+    seen job IDs — if a batch contains only already-seen jobs we stop.
+    """
     results = []
+    seen_ids: set[str] = set()
     page = 0
     base = _base_url()
     while True:
         resp = requests.get(
             f"{base}/v1/Jobs",
             headers=get_headers(),
-            params={"page": page},
+            params={"page": page, "take": _JOBS_PAGE_SIZE},
             timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
         batch = data if isinstance(data, list) else data.get("jobs", data.get("Jobs", []))
-        results.extend(batch)
-        if len(batch) < 50:
-            break
+
+        if not batch:
+            break  # empty page → done
+
+        new_jobs = [j for j in batch if _job_id(j) not in seen_ids]
+        if not new_jobs:
+            break  # API returned only already-seen jobs → no real pagination
+
+        for j in new_jobs:
+            seen_ids.add(_job_id(j))
+        results.extend(new_jobs)
+
+        if len(batch) < _JOBS_PAGE_SIZE:
+            break  # partial page → this was the last page
         page += 1
+
     return results
 
 
