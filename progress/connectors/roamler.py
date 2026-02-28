@@ -321,6 +321,25 @@ def raw_submissions_test(job_id: str, date_from: str, date_to: str) -> dict:
     return results
 
 
+def fetch_submission_detail(submission_id: str | int) -> dict:
+    """Fetch full detail for a single submission, including answers and photos.
+
+    Endpoint: GET /v1/submissions/{id}?includeAnswers=true&includeQuestions=true
+
+    Returns the raw JSON dict — field structure unknown until first live call.
+    Used by the diagnostic button to discover what data the API provides.
+    """
+    base = _base_url()
+    resp = requests.get(
+        f"{base}/v1/submissions/{submission_id}",
+        headers=get_headers(),
+        params={"includeAnswers": "true", "includeQuestions": "true"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def fetch_all_jobs() -> list[dict]:
     """Fetch all Roamler jobs in a single call (no pagination params).
 

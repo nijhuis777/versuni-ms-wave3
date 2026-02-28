@@ -545,6 +545,40 @@ with tab_progress:
                         else:
                             st.warning("No valid jobs found to test against.")
 
+                    # ── Full submission detail (answers + photos) ─────────
+                    st.divider()
+                    st.caption(
+                        "**Full submission detail** — fetches one submission with all "
+                        "answers and questions to discover the data structure."
+                    )
+                    if st.button("🔬 Inspect full submission (with answers)", key="inspect_full_sub"):
+                        test_job = next((r for r in debug_rows if r["market"] != "??"), None)
+                        if test_job:
+                            with st.spinner(f"Fetching submissions for job {test_job['id']}…"):
+                                subs = roamler.fetch_submissions(
+                                    test_job["id"], date_from_str, date_to_str
+                                )
+                            if subs:
+                                # Extract submission ID from hRef
+                                first = subs[0]
+                                href = first.get("hRef", "")
+                                sub_id = href.split("/")[-1] if href else first.get("id", "")
+                                st.caption(f"Calling `/v1/submissions/{sub_id}?includeAnswers=true&includeQuestions=true`")
+                                with st.spinner(f"Fetching detail for submission {sub_id}…"):
+                                    try:
+                                        detail = roamler.fetch_submission_detail(sub_id)
+                                        st.success(f"Got response — {len(str(detail)):,} chars")
+                                        # Show top-level keys first
+                                        if isinstance(detail, dict):
+                                            st.caption(f"**Top-level keys:** {', '.join(detail.keys())}")
+                                        st.json(detail)
+                                    except Exception as _de:
+                                        st.error(f"Detail endpoint error: {_de}")
+                            else:
+                                st.warning("No submissions found for this job in the date range.")
+                        else:
+                            st.warning("No valid jobs found to test against.")
+
                     # ── Per-job submission count (on demand) ───────────────
                     st.divider()
                     st.caption(
