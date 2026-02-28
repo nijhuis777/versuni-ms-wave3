@@ -3,37 +3,58 @@
 # Edit these numbers to match your agreed fieldwork plan.
 # In the tracker dashboard you can also override them live in the sidebar.
 #
-# Categories must match what the platform API returns:
-#   Roamler: FAEM, Airfryer, Handstick_VC, Steam_Iron, Handheld_Steamer
-#   Wiser:   FAEM, Airfryer, All_in_One, Handheld_Steamer
-#   Pinion:  FAEM, Airfryer
+# Category codes must match what the Roamler/Wiser/Pinion API returns:
+#   FAEM, SAEM, Portioned_Espresso, Airfryer, Blender,
+#   Handstick_WD, Handstick_Dry, RVC,
+#   All_in_One, Handheld_Steamer, Steam_Generator, Steam_Iron, Stand_Steamer, Dry_Iron
 #
 # Set to 0 = target not yet agreed (shown as "n/a" in dashboard)
 
 targets:
-  # ── Roamler markets ────────────────────────────────────────────────────────
-  NL:
-    Airfryer: 0
-    FAEM: 0
+  # ── Wave III Roamler markets ───────────────────────────────────────────────
+  DE:
+    FAEM: 325
+    SAEM: 325
+    Airfryer: 325
+    Handstick_WD: 325
+    Handstick_Dry: 325
+    RVC: 325
+    Handheld_Steamer: 325
 
   FR:
-    Airfryer: 0
-    FAEM: 0
+    FAEM: 350
+    SAEM: 350
+    Airfryer: 350
+    Handstick_Dry: 350
+    Handheld_Steamer: 350
 
-  DE:
-    Airfryer: 0
-    FAEM: 0
+  NL:
+    FAEM: 150
+    SAEM: 150
+    Airfryer: 150
+    Handstick_WD: 114
+    Handstick_Dry: 114
+    RVC: 100
+    Handheld_Steamer: 150
 
   UK:
-    Airfryer: 0
-    FAEM: 0
+    FAEM: 290
+    SAEM: 290
+    Portioned_Espresso: 290
+    Airfryer: 290
+    Handstick_Dry: 290
+    Handheld_Steamer: 250
 
   TR:
-    FAEM: 0
-    Handstick_VC: 0
-    Steam_Iron: 0
+    FAEM: 300
+    Handstick_WD: 300
+    Handstick_Dry: 300
+    RVC: 300
+    Handheld_Steamer: 300
+    Steam_Generator: 300
+    Steam_Iron: 300
 
-  # ── Wiser markets ──────────────────────────────────────────────────────────
+  # ── Wiser markets ─────────────────────────────────────────────────────────
   AU:
     FAEM: 0
     Airfryer: 0
@@ -42,8 +63,21 @@ targets:
 
   US:
     FAEM: 0
+    SAEM: 0
 
-  # ── Pinion markets ─────────────────────────────────────────────────────────
+  # ── Pinion markets ────────────────────────────────────────────────────────
   BR:
     FAEM: 0
     Airfryer: 0
+    Blender: 0
+
+  # ── Poland — Wave II 2025 only (not Wave III) ──────────────────────────────
+  POL:
+    FAEM: 0
+    SAEM: 0
+    Airfryer: 0
+    Handstick_WD: 0
+    Handstick_Dry: 0
+    RVC: 0
+    Handheld_Steamer: 0
+    Stand_Steamer: 0
