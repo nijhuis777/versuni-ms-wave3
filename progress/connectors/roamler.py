@@ -366,6 +366,43 @@ def debug_jobs() -> tuple[list[dict], dict]:
     return rows, meta
 
 
+def debug_jobs_with_submissions(
+    date_from: str,
+    date_to: str,
+    progress_cb=None,
+) -> tuple[list[dict], dict]:
+    """Like debug_jobs() but also fetches the submission count for each job.
+
+    progress_cb: optional callable(done: int, total: int) for progress reporting.
+
+    The returned rows each gain a 'submissions' field:
+      >=0   = actual submission count
+       -1   = skipped (unknown market)
+       -2   = HTTP / parse error (see 'sub_error' field)
+    """
+    rows, meta = debug_jobs()
+    if not rows or "error" in meta:
+        return rows, meta
+
+    total = len(rows)
+    for i, row in enumerate(rows):
+        if progress_cb:
+            progress_cb(i, total)
+        if row["market"] == "??":
+            row["submissions"] = -1   # skipped — market unknown
+            continue
+        try:
+            subs = fetch_submissions(row["id"], date_from, date_to)
+            row["submissions"] = len(subs)
+        except Exception as e:
+            row["submissions"] = -2   # error fetching
+            row["sub_error"] = str(e)
+
+    if progress_cb:
+        progress_cb(total, total)
+    return rows, meta
+
+
 def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
     """
     Returns unified progress rows for all Roamler markets.

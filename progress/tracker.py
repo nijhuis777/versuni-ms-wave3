@@ -336,8 +336,10 @@ with tab_progress:
 
     # ─── Roamler job diagnostics ───────────────────────────────────────────────
     with st.expander("🔍 Roamler job diagnostics (debug)", expanded=False):
-        st.caption("Shows every job the Roamler API returns and how it was parsed. "
-                   "Use this to spot missing or mis-labelled categories.")
+        st.caption(
+            "Shows every job the Roamler API returns and how its name was parsed. "
+            "Use this to spot jobs assigned to the wrong market / category."
+        )
         if roamler_ok:
             debug_rows, meta = roamler.debug_jobs()
             if "error" in meta:
@@ -356,6 +358,47 @@ with tab_progress:
                         use_container_width=True,
                         hide_index=True,
                     )
+
+                    # ── Per-job submission count (on demand) ───────────────
+                    st.divider()
+                    st.caption(
+                        "**Load submission counts** — fetches submissions for every job in "
+                        "the selected date range. Takes ~1–2 min for 77 jobs."
+                    )
+                    if st.button("📊 Load submission counts per job", key="load_sub_counts"):
+                        prog_bar = st.progress(0, text="Fetching submissions…")
+
+                        def _cb(done: int, total: int):
+                            pct = done / total if total else 1
+                            prog_bar.progress(pct, text=f"Fetching submissions… {done}/{total}")
+
+                        with st.spinner("Querying Roamler API for each job…"):
+                            subs_rows, _ = roamler.debug_jobs_with_submissions(
+                                date_from_str, date_to_str, progress_cb=_cb
+                            )
+
+                        prog_bar.empty()
+
+                        if subs_rows:
+                            sdf = _pd.DataFrame(subs_rows)
+                            # Human-readable submission label
+                            def _sub_label(row):
+                                s = row.get("submissions", -2)
+                                if s == -1:  return "skipped (??)"
+                                if s == -2:  return f"error: {row.get('sub_error','?')}"
+                                return str(s)
+                            sdf["subs"] = sdf.apply(_sub_label, axis=1)
+                            cols = ["id", "market", "category", "subs", "workingTitle", "title"]
+                            st.dataframe(
+                                sdf[[c for c in cols if c in sdf.columns]],
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                            total_subs = sdf["submissions"].clip(lower=0).sum()
+                            st.success(
+                                f"Total submissions in {date_from_str} → {date_to_str}: "
+                                f"**{total_subs}** across {len(subs_rows)} jobs"
+                            )
                 else:
                     st.info("No jobs returned.")
         else:
