@@ -144,6 +144,12 @@ header[data-testid="stHeader"] button {{
     justify-content: space-between !important;
     padding: 0 1.75rem !important;
     box-shadow: 0 3px 16px rgba(0,0,0,0.18) !important;
+    transition: left 0.3s ease !important;
+}}
+
+/* ── Shift header right when sidebar is open ─────────────────────────────── */
+[data-testid="stSidebar"][aria-expanded="true"] ~ * .versuni-header {{
+    left: 21rem !important;
 }}
 
 /* ── Push main content below both headers ────────────────────────────────── */

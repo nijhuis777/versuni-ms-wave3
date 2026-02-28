@@ -116,44 +116,80 @@ def is_configured() -> bool:
 # ─── Parsing helpers ──────────────────────────────────────────────────────────
 
 def _parse_market(job: dict) -> str:
-    """Extract 2-letter market code.
-    workingTitle format: '2025 - January - Versuni - Airfryer - FR'
-    Market code is always the last ' - ' segment.
+    """Extract 2-letter market code from workingTitle or title.
+
+    Tries last segment first (expected format), then scans all segments,
+    then falls back to the title field — handles any segment ordering.
     """
     wt = job.get("workingTitle") or ""
     parts = [p.strip() for p in wt.split(" - ")]
-    if parts:
-        candidate = parts[-1].upper()
-        if candidate in ROAMLER_MARKETS:
-            return candidate
-    # Fallback: scan title for market codes
+
+    # 1. Last segment (canonical position)
+    if parts and parts[-1].upper() in ROAMLER_MARKETS:
+        return parts[-1].upper()
+
+    # 2. Any segment — handles non-standard orderings
+    for p in parts:
+        if p.upper() in ROAMLER_MARKETS:
+            return p.upper()
+
+    # 3. Scan title field
     title = (job.get("title") or "").upper()
     for m in ROAMLER_MARKETS:
-        if title.endswith(f" {m}") or f" {m} " in f" {title} ":
+        if title == m or title.endswith(f" {m}") or f" {m} " in f" {title} ":
             return m
+
     return "??"
 
 
+# Words to skip when scanning segments for a category keyword.
+_SKIP_WORDS = {
+    "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december",
+    "versuni", "roamler", "philips",
+}
+
+
 def _parse_category(job: dict) -> str:
-    """Extract category from workingTitle second-to-last segment.
-    workingTitle format: '2025 - January - Versuni - Airfryer - FR'
-    Category is always the second-to-last ' - ' segment.
+    """Extract category from workingTitle.
+
+    Tries the second-to-last segment first (expected format), then scans
+    every segment (skipping years, months, market codes, brand names),
+    then falls back to the title field.  Returns the raw segment text if
+    no keyword matches so unrecognised categories surface in the dashboard
+    rather than being silently dropped.
     """
     wt = job.get("workingTitle") or ""
     parts = [p.strip() for p in wt.split(" - ")]
+
+    # 1. Second-to-last segment (canonical position)
     if len(parts) >= 2:
         cat_raw = parts[-2].lower()
         for kw, cat in CATEGORY_KEYWORDS.items():
             if kw in cat_raw:
                 return cat
-        # No keyword match — return the raw segment so unrecognised categories
-        # are visible in the dashboard rather than silently dropped.
-        return parts[-2].strip() or "??"
-    # Fallback: scan title
+
+    # 2. All segments — handles non-standard orderings
+    for p in parts:
+        p_lower = p.lower()
+        if (p.upper() in ROAMLER_MARKETS   # skip market codes
+                or p.isdigit()              # skip year numbers
+                or p_lower in _SKIP_WORDS): # skip months / brand names
+            continue
+        for kw, cat in CATEGORY_KEYWORDS.items():
+            if kw in p_lower:
+                return cat
+
+    # 3. Fallback: scan title field
     title = (job.get("title") or "").lower()
     for kw, cat in CATEGORY_KEYWORDS.items():
         if kw in title:
             return cat
+
+    # 4. Return raw second-to-last segment so unrecognised names are visible
+    if len(parts) >= 2:
+        return parts[-2].strip() or "??"
+
     return "??"
 
 
