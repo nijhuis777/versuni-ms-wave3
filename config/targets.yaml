@@ -40,6 +40,7 @@ targets:
     RVC: 243
     SAEM: 243
     Stand_Steamer: 218
+    Steam_Generator: 218
   TR:
     FAEM: 300
     Handheld_Steamer: 300
@@ -53,6 +54,7 @@ targets:
     FAEM: 290
     Handheld_Steamer: 250
     Handstick_Dry: 290
+    RVC: 290
     Portioned_Espresso: 290
     SAEM: 290
   US:
