@@ -14,7 +14,9 @@ Share: deploy to Streamlit Cloud for team access (Daniel, Paula, etc.)
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+_repo_root = str(Path(__file__).parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 
 import streamlit as st
 import pandas as pd
