@@ -1,0 +1,38 @@
+# Brand configuration per category
+# These drive the brand lists in questionnaire answer options
+
+brands:
+  FAEM:
+    versuni: [Philips]
+    competitors: [Delonghi, Siemens, Jura, Smeg, Miele]
+    other: true  # allow open-ended "other" answer
+
+  SAEM:
+    versuni: [Philips]
+    competitors: [Delonghi, Siemens, Jura, Krups, Gaggia]
+    other: true
+
+  Airfryer:
+    versuni: [Philips]
+    competitors: [Tefal, Ninja, Cosori, Samsung, Instant_Pot]
+    other: true
+
+  Blender:
+    versuni: [Philips]
+    competitors: [Bosch, KitchenAid, Tefal, NutriBullet, Kenwood]
+    other: true
+
+  Iron:
+    versuni: [Philips, Azur]
+    competitors: [Tefal, Bosch, Rowenta, Braun, Russell_Hobbs]
+    other: true
+
+  Handheld_Steamer:
+    versuni: [Philips, Azur]
+    competitors: [Tefal, Rowenta, Bosch, Braun]
+    other: true
+
+  Garlic_Press:
+    versuni: [Philips]
+    competitors: [Bosch, Kenwood, KitchenAid]
+    other: true

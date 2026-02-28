@@ -1,0 +1,73 @@
+# Wave III Scope — 8 markets
+# Update from: Mystery shopping 2026 - Inputs - updated all markets.xlsx
+# TODO: verify store counts and categories once Excel is parsed
+
+markets:
+  DE:
+    name: Germany
+    platform: roamler
+    target_stores: 300
+    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer, Garlic_Press]
+  FR:
+    name: France
+    platform: roamler
+    target_stores: 250
+    categories: [FAEM, SAEM, Airfryer, Blender, Iron]
+  NL:
+    name: Netherlands
+    platform: roamler
+    target_stores: 150
+    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer, Garlic_Press]
+  UK:
+    name: United Kingdom
+    platform: roamler
+    target_stores: 250
+    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer]
+  TR:
+    name: Turkey
+    platform: roamler
+    target_stores: 250
+    categories: [FAEM, SAEM, Airfryer, Blender, Iron, Handheld_Steamer, Garlic_Press]
+  AU:
+    name: Australia
+    platform: wiser
+    target_stores: 150
+    categories: [FAEM, Airfryer, Iron, Handheld_Steamer, Garlic_Press]
+  BR:
+    name: Brazil
+    platform: pinion
+    target_stores: 400
+    categories: [Airfryer, Blender, FAEM]
+  US:
+    name: United States
+    platform: wiser
+    target_stores: 400
+    categories: [FAEM, SAEM]
+
+categories:
+  FAEM:
+    label: Fully Automatic Espresso Machines
+    wave2_json: Versuni_FAEM.json
+  SAEM:
+    label: Semi-Automatic Espresso Machines
+    wave2_json: null  # to be added
+  Airfryer:
+    label: Airfryer
+    wave2_json: null
+  Blender:
+    label: Blender
+    wave2_json: null
+  Iron:
+    label: Iron (all types)
+    wave2_json: null
+  Handheld_Steamer:
+    label: Handheld Steamer
+    wave2_json: null
+  Garlic_Press:
+    label: Garlic Press
+    wave2_json: null
+
+kpis:
+  KPI1: Availability
+  KPI2: Visibility / Attractiveness
+  KPI3: Brand Recommendation

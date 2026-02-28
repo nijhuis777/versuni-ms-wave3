@@ -1,0 +1,33 @@
+# Credentials — never commit these
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Data files (can be large — use shared drive or data store instead)
+data/raw/
+data/processed/*.xlsx
+data/processed/*.csv
+*.xlsx
+*.csv
+
+# Keep example/template files
+!config/*.yaml
+!config/*.example.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Streamlit
+.streamlit/secrets.toml
