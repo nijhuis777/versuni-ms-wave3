@@ -159,7 +159,17 @@ with col_ts:
         f"Last refreshed: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC"
     )
 
-df = load_all_progress(date_from_str, date_to_str)
+try:
+    df = load_all_progress(date_from_str, date_to_str)
+except Exception as _load_err:
+    st.error(f"⚠️ Error loading progress data: {_load_err}")
+    import traceback as _tb
+    with st.expander("Error details"):
+        st.code(_tb.format_exc())
+    df = pd.DataFrame(columns=[
+        "market", "market_name", "category", "platform",
+        "completed", "target", "pct", "status",
+    ])
 
 # ─── Merge targets ────────────────────────────────────────────────────────────
 if not targets_df.empty and "target" in targets_df.columns:
@@ -210,6 +220,24 @@ with tab_progress:
     k4.metric("Markets Active",   markets_active)
     k5.metric("Markets Complete", markets_complete)
     k6.metric("Platforms",        df["platform"].nunique())
+
+    # ─── Data-quality notice ───────────────────────────────────────────────────
+    _rm_df = df[df["platform"] == "roamler"] if not df.empty else df
+    if not _rm_df.empty:
+        _stub = "note" in _rm_df.columns and _rm_df["note"].notna().any()
+        _err  = "error" in _rm_df.columns and _rm_df["error"].notna().any()
+        _zero = int(_rm_df["completed"].sum()) == 0
+        if _err:
+            st.error(f"Roamler API error: {_rm_df['error'].dropna().iloc[0]}")
+        elif _stub:
+            st.warning("⚠️ Roamler is using **stub data** (API not configured or failed). "
+                       "Check the 🔍 debug expander below for details.")
+        elif _zero and roamler_ok:
+            st.info(f"ℹ️ Roamler returned **0 completed visits** for "
+                    f"{date_from_str} → {date_to_str}. "
+                    "Either no approved submissions exist for this date range, "
+                    "or all jobs are being skipped (unknown market). "
+                    "Check the 🔍 debug expander below.")
 
     with k7:
         sel_market = st.selectbox(
@@ -358,6 +386,36 @@ with tab_progress:
                         use_container_width=True,
                         hide_index=True,
                     )
+
+                    # ── Raw get_progress() diagnostic ─────────────────────
+                    st.divider()
+                    st.caption("**Raw get_progress() output** — bypass the cache and call "
+                               "the full pipeline directly to see exactly what data is returned.")
+                    if st.button("🧪 Run get_progress() now", key="run_get_progress"):
+                        with st.spinner("Running get_progress()…"):
+                            try:
+                                _prog = roamler.get_progress(date_from_str, date_to_str)
+                            except Exception as _pe:
+                                st.error(f"get_progress() raised: {_pe}")
+                                _prog = []
+                        if _prog:
+                            _prog_df = _pd.DataFrame(_prog)
+                            total_c  = int(_prog_df["completed"].sum())
+                            st.success(
+                                f"get_progress() returned **{len(_prog)} rows** · "
+                                f"**{total_c} total completed** for {date_from_str} → {date_to_str}"
+                            )
+                            for _col in ["error", "note", "skipped_job_ids"]:
+                                if _col in _prog_df.columns:
+                                    _v = _prog_df[_col].dropna()
+                                    if not _v.empty:
+                                        st.warning(f"{_col}: {_v.iloc[0]}")
+                            _show_cols = [c for c in
+                                          ["market","category","completed","skipped_jobs","date_from","date_to"]
+                                          if c in _prog_df.columns]
+                            st.dataframe(_prog_df[_show_cols], use_container_width=True, hide_index=True)
+                        else:
+                            st.warning("get_progress() returned an empty list.")
 
                     # ── Per-job submission count (on demand) ───────────────
                     st.divider()

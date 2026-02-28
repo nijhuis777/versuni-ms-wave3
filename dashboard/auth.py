@@ -13,14 +13,11 @@ import streamlit as st
 
 def require_password():
     """
-    Show a password prompt if the app is password-protected.
-    Password comes from Streamlit secrets (for Cloud) or env var (for local).
-
-    To set:
-      - Streamlit Cloud: App Settings → Secrets → [auth] password = "yourpass"
-      - Local: add DASHBOARD_PASSWORD=yourpass to .env
-      - No password set: app runs open (fine for local dev)
+    Password gate — TEMPORARILY DISABLED for testing/deployment.
+    Re-enable by restoring the full implementation below.
     """
+    return  # ← remove this line to re-enable the password gate
+
     # Get password from secrets or env
     password = None
     try:
