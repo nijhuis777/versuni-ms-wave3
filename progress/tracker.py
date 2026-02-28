@@ -36,7 +36,7 @@ from dashboard.auth import require_password
 
 try:
     from dashboard.branding import (
-        render_header, inject_css, theme_selector,
+        render_header, inject_css,
         STATUS_COLORS, ROAMLER_ORANGE,
     )
 except Exception as _branding_err:
@@ -51,7 +51,7 @@ except Exception as _branding_err:
 
 require_password()
 
-_theme = st.session_state.get("theme", "light")
+_theme = "light"
 inject_css(_theme)
 
 FIELDWORK_START = "2026-03-09"
@@ -105,12 +105,6 @@ def load_all_progress(date_from: str, date_to: str) -> pd.DataFrame:
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.subheader("🎨 Theme")
-    _theme = theme_selector(sidebar=True)
-    inject_css(_theme)
-
-    st.divider()
-
     st.subheader("📅 Date Range")
     d_from = st.date_input("From", value=date(2025, 1, 1),  key="date_from")
     d_to   = st.date_input("To",   value=date(2025, 12, 31), key="date_to")
