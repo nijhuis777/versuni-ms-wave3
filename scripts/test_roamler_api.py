@@ -28,7 +28,7 @@ import requests
 import json
 
 API_KEY  = os.getenv("ROAMLER_API_KEY", "")
-BASE_URL = os.getenv("ROAMLER_API_BASE_URL", "https://api.roamler.com")
+BASE_URL = os.getenv("ROAMLER_API_BASE_URL", "https://api-customer.roamler.com")
 DATE_FROM = os.getenv("ROAMLER_DATE_FROM", "2025-01-01")
 DATE_TO   = os.getenv("ROAMLER_DATE_TO",   "2025-12-31")
 
