@@ -22,16 +22,31 @@ import plotly.express as px
 import yaml
 from datetime import date, datetime
 
-from progress.connectors import roamler, wiser, pinion
-from dashboard.auth import require_password
-from dashboard.branding import render_header, inject_css, theme_selector, STATUS_COLORS, ROAMLER_ORANGE
-
-# ─── Page config ────────────────────────────────────────────────────────────
+# ─── Page config (must be first st call) ─────────────────────────────────────
 st.set_page_config(
     page_title="Versuni MS Wave III — Project Hub",
     page_icon="📊",
     layout="wide",
 )
+
+from progress.connectors import roamler, wiser, pinion
+from dashboard.auth import require_password
+
+try:
+    from dashboard.branding import (
+        render_header, inject_css, theme_selector,
+        STATUS_COLORS, ROAMLER_ORANGE,
+    )
+except Exception as _branding_err:
+    import traceback as _tb
+    st.error(
+        f"**Import error — dashboard.branding:**\n\n"
+        f"```\n{_branding_err}\n```\n\n"
+        f"**Full traceback:**\n```\n{_tb.format_exc()}\n```\n\n"
+        f"**sys.path:** `{sys.path}`"
+    )
+    st.stop()
+
 require_password()
 
 _theme = st.session_state.get("theme", "light")
