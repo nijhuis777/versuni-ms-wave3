@@ -339,20 +339,25 @@ with tab_progress:
         st.caption("Shows every job the Roamler API returns and how it was parsed. "
                    "Use this to spot missing or mis-labelled categories.")
         if roamler_ok:
-            debug_rows = roamler.debug_jobs()
-            if debug_rows and "error" in debug_rows[0]:
-                st.error(debug_rows[0]["error"])
-            elif debug_rows:
-                import pandas as _pd
-                dbg = _pd.DataFrame(debug_rows)
-                st.caption(f"{len(dbg)} jobs fetched from Roamler API")
-                st.dataframe(
-                    dbg[["id", "market", "category", "workingTitle", "title"]],
-                    use_container_width=True,
-                    hide_index=True,
-                )
+            debug_rows, meta = roamler.debug_jobs()
+            if "error" in meta:
+                st.error(meta["error"])
             else:
-                st.info("No jobs returned.")
+                st.caption(
+                    f"**{meta['total_fetched']} jobs fetched** — "
+                    f"markets: {', '.join(meta['markets_found'])} — "
+                    f"skipped (unknown market): {meta['skipped_unknown_market']}"
+                )
+                if debug_rows:
+                    import pandas as _pd
+                    dbg = _pd.DataFrame(debug_rows)
+                    st.dataframe(
+                        dbg[["id", "market", "category", "workingTitle", "title"]],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                else:
+                    st.info("No jobs returned.")
         else:
             st.warning("Roamler API not configured — no data to show.")
 

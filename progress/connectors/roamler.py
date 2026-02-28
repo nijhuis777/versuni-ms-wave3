@@ -215,11 +215,11 @@ def fetch_all_jobs() -> list[dict]:
     """
     results = []
     seen_ids: set[str] = set()
-    page = 0
+    page = 1          # Roamler API is 1-indexed (page=0 == page=1, causing duplicates)
     base = _base_url()
     MAX_PAGES = 50
 
-    while page < MAX_PAGES:
+    while page <= MAX_PAGES:
         resp = requests.get(
             f"{base}/v1/Jobs",
             headers=get_headers(),
@@ -314,26 +314,34 @@ def pull_all_submissions(date_from: str = None, date_to: str = None) -> list[dic
     return all_submissions
 
 
-def debug_jobs() -> list[dict]:
-    """Return all jobs with their raw workingTitle and parsed market/category.
+def debug_jobs() -> tuple[list[dict], dict]:
+    """Return all jobs with parsed fields, plus fetch metadata.
     Used by the dashboard debug expander to diagnose missing submissions.
+    Returns (rows, meta) where meta has total_fetched, pages_used.
     """
     if not is_configured():
-        return []
+        return [], {"error": "API not configured"}
     try:
         jobs = fetch_all_jobs()
     except Exception as e:
-        return [{"error": str(e)}]
-    return [
+        return [], {"error": str(e)}
+    rows = [
         {
             "id":            _job_id(j),
-            "workingTitle":  j.get("workingTitle", ""),
-            "title":         j.get("title", ""),
             "market":        _parse_market(j),
             "category":      _parse_category(j),
+            "workingTitle":  j.get("workingTitle", ""),
+            "title":         j.get("title", ""),
         }
         for j in jobs
     ]
+    skipped = [r for r in rows if r["market"] == "??"]
+    meta = {
+        "total_fetched": len(jobs),
+        "skipped_unknown_market": len(skipped),
+        "markets_found": sorted({r["market"] for r in rows if r["market"] != "??"}),
+    }
+    return rows, meta
 
 
 def get_progress(date_from: str = None, date_to: str = None) -> list[dict]:
