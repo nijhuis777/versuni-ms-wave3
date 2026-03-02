@@ -259,8 +259,13 @@ with tab_progress:
         )
         st.caption("Market")
     with k8:
+        # Cascade: only show platforms that have data for the selected market
+        _plat_src = df if sel_market == "All" else df[df["market"] == sel_market]
+        plat_opts = sorted(_plat_src["platform"].unique().tolist())
+        if st.session_state.get("prog_platform", "All") not in ["All"] + plat_opts:
+            st.session_state["prog_platform"] = "All"
         sel_platform = st.selectbox(
-            "Platform", ["All"] + sorted(df["platform"].unique().tolist()),
+            "Platform", ["All"] + plat_opts,
             key="prog_platform", label_visibility="collapsed",
         )
         st.caption("Platform")
