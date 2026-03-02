@@ -375,7 +375,7 @@ with tab_progress:
         display_df.columns = ["Market", "Category", "Platform", "Completed", "Target", "%", "Status"]
         display_df = display_df.sort_values(["Market", "Category"])
         st.dataframe(
-            display_df.style.background_gradient(subset=["%"], cmap="RdYlGn", vmin=0, vmax=100),
+            display_df.style.bar(subset=["%"], color=["#f4846a", "#6abf69"], vmin=0, vmax=100),
             use_container_width=True,
             hide_index=True,
         )
