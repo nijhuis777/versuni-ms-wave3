@@ -53,6 +53,11 @@ require_password()
 
 _theme = "light"
 inject_css(_theme)
+# Tracker uses no sidebar — hide it (dashboard/app.py keeps its sidebar)
+st.markdown("""<style>
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapsedControl"] { display: none !important; }
+</style>""", unsafe_allow_html=True)
 
 FIELDWORK_START = "2026-03-09"
 CONFIG_DIR = Path(__file__).parent.parent / "config"

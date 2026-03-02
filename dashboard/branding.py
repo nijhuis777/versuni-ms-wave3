@@ -157,12 +157,6 @@ header[data-testid="stHeader"] button {{
     padding-top: {ST_HEADER_PX + HEADER_HEIGHT_PX + 16}px !important;
 }}
 
-/* ── Sidebar: hidden (filters live in the top-bar filter row) ────────────── */
-[data-testid="stSidebar"],
-[data-testid="stSidebarCollapsedControl"] {{
-    display: none !important;
-}}
-
 /* ── Metric cards ────────────────────────────────────────────────────────── */
 [data-testid="metric-container"] {{
     background: {t['card_bg']} !important;
