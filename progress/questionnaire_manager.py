@@ -58,7 +58,9 @@ def _extract_questions(data: dict | list) -> list[dict]:
     if isinstance(data, list):
         raw = data
     else:
-        for key in ("questions", "Questions", "items", "Items", "tasks"):
+        for key in ("questions", "Questions", "items", "Items",
+                    "tasks", "Tasks", "questionnaire", "Questionnaire",
+                    "survey", "Survey", "elements", "Elements"):
             if key in data:
                 raw = data[key]
                 break
@@ -69,13 +71,58 @@ def _extract_questions(data: dict | list) -> list[dict]:
     for q in raw:
         if not isinstance(q, dict):
             continue
-        qid = str(q.get("id") or q.get("Id") or q.get("code") or q.get("Code") or "")
-        title = str(q.get("title") or q.get("Title") or q.get("text") or q.get("question") or "")
+
+        qid = str(
+            q.get("id") or q.get("Id") or q.get("ID") or
+            q.get("code") or q.get("Code") or
+            q.get("questionId") or q.get("QuestionId") or ""
+        )
+
+        title = str(
+            q.get("title") or q.get("Title") or
+            q.get("text") or q.get("Text") or
+            q.get("question") or q.get("Question") or
+            q.get("questionText") or q.get("QuestionText") or
+            q.get("label") or q.get("Label") or
+            q.get("description") or q.get("Description") or
+            q.get("name") or q.get("Name") or
+            q.get("statement") or q.get("Statement") or
+            q.get("prompt") or q.get("Prompt") or
+            q.get("content") or q.get("Content") or
+            q.get("displayText") or q.get("DisplayText") or
+            q.get("taskTitle") or q.get("TaskTitle") or
+            q.get("workingTitle") or q.get("WorkingTitle") or
+            ""
+        )
+
+        # Last resort: check nested translations array
+        if not title:
+            for tkey in ("translations", "Translations", "localisations"):
+                trans = q.get(tkey)
+                if trans and isinstance(trans, list) and isinstance(trans[0], dict):
+                    title = str(
+                        trans[0].get("text") or trans[0].get("title") or
+                        trans[0].get("label") or trans[0].get("value") or ""
+                    )
+                    if title:
+                        break
+
+        answers = (
+            q.get("answers") or q.get("Answers") or
+            q.get("options") or q.get("Options") or
+            q.get("choices") or q.get("Choices") or
+            q.get("answerOptions") or q.get("AnswerOptions") or
+            []
+        )
+
         questions.append({
             "id": qid,
             "title": title,
-            "type": q.get("type") or q.get("Type") or "",
-            "answers": q.get("answers") or q.get("Answers") or [],
+            "type": (
+                q.get("type") or q.get("Type") or
+                q.get("questionType") or q.get("QuestionType") or ""
+            ),
+            "answers": answers,
             "_raw": q,
         })
     return questions
@@ -261,6 +308,19 @@ def render_questionnaire_tab() -> None:
                 parsed = json.loads(raw_bytes)
                 questions = _extract_questions(parsed)
                 st.success(f"Parsed: **{len(questions)} questions** detected.")
+
+                # If text is still empty, show raw structure so we can fix the field mapping
+                if questions and not questions[0]["title"]:
+                    with st.expander("⚠️ Question text not found — raw structure (first question)", expanded=True):
+                        st.caption(
+                            "All question titles came back empty. The JSON uses field names "
+                            "not yet known to the parser. The raw first question is shown "
+                            "below — share the key names so we can add them."
+                        )
+                        st.json(questions[0]["_raw"])
+                        if not isinstance(parsed, list):
+                            st.caption(f"**Top-level keys in JSON:** `{list(parsed.keys())}`")
+
                 with st.expander(f"Preview all {len(questions)} questions", expanded=False):
                     for i, q in enumerate(questions, start=1):
                         _render_question_card(q, i)
