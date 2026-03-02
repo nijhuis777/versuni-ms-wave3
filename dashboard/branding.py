@@ -157,20 +157,10 @@ header[data-testid="stHeader"] button {{
     padding-top: {ST_HEADER_PX + HEADER_HEIGHT_PX + 16}px !important;
 }}
 
-/* ── Sidebar: push content below both headers ───────────────────────────── */
-[data-testid="stSidebar"] {{
-    background-color: {t['sidebar_bg']} !important;
-    border-right: 2px solid {t['sidebar_border']} !important;
-    padding-top: {ST_HEADER_PX + HEADER_HEIGHT_PX}px !important;
-}}
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {{
-    border-left: 3px solid {ROAMLER_ORANGE} !important;
-    padding-left: 0.5rem !important;
-    font-size: 0.85rem !important;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: {t['text']} !important;
+/* ── Sidebar: hidden (filters live in the top-bar filter row) ────────────── */
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapsedControl"] {{
+    display: none !important;
 }}
 
 /* ── Metric cards ────────────────────────────────────────────────────────── */
@@ -313,24 +303,8 @@ def inject_css(theme: str = "light") -> None:
 
 
 def theme_selector(sidebar: bool = True) -> str:
-    """Render theme toggle buttons; return selected theme key."""
-    options = {k: v["label"] for k, v in THEMES.items()}
-    container = st.sidebar if sidebar else st
-
-    current = st.session_state.get("theme", "light")
-    selected_label = options.get(current, options["light"])
-
-    choice = container.radio(
-        "🎨 Theme",
-        list(options.values()),
-        index=list(options.values()).index(selected_label),
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-    # Map label back to key
-    theme_key = next(k for k, v in options.items() if v == choice)
-    st.session_state["theme"] = theme_key
-    return theme_key
+    """Deprecated — always returns 'light'."""
+    return "light"
 
 
 def render_header(subtitle: str = "Wave III — Fieldwork Progress",
