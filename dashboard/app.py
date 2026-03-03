@@ -82,6 +82,10 @@ def main():
             "Run `python pipeline/roamler_etl.py` to load live data.",
             icon="⚠",
         )
+        from dashboard.data_loader import PARQUET_PATH, EXCEL_PATH
+        with st.expander("🔍 Debug: data path info", expanded=True):
+            st.code(f"PARQUET_PATH = {PARQUET_PATH}\nexists = {PARQUET_PATH.exists()}\n\nEXCEL_PATH   = {EXCEL_PATH}\nexists = {EXCEL_PATH.exists()}\n\ndata/processed contents:\n" +
+                    "\n".join(str(p) for p in PARQUET_PATH.parent.iterdir()) if PARQUET_PATH.parent.exists() else "(data/processed/ missing)")
 
     flt = sidebar_filters(df)
     filtered = apply_filters(df, **flt)
