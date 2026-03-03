@@ -222,14 +222,13 @@ def apply_filters(
 
 def _fix_multiselect_state(key: str, valid_options: list) -> None:
     """Keep session-state for a multiselect in sync with the available options.
-    On first visit initialise to all options; on subsequent visits drop any
-    value that is no longer in the (narrowed) option list.
+    Empty = no filter applied (show all). Values no longer available are dropped.
     """
     if key not in st.session_state:
-        st.session_state[key] = valid_options
+        st.session_state[key] = []   # start empty → "show all"
     else:
-        kept = [v for v in st.session_state[key] if v in valid_options]
-        st.session_state[key] = kept if kept else valid_options
+        # Drop values that are no longer in the available options; preserve empty
+        st.session_state[key] = [v for v in st.session_state[key] if v in valid_options]
 
 
 def sidebar_filters(df: pd.DataFrame, key_prefix: str = "") -> dict:
@@ -292,16 +291,16 @@ def sidebar_filters(df: pd.DataFrame, key_prefix: str = "") -> dict:
     cols = st.columns(5 if has_price else 4)
 
     with cols[0]:
-        waves = st.multiselect("🌊 Wave", options=waves_avail, key=wave_key)
+        waves = st.multiselect("🌊 Wave", options=waves_avail, key=wave_key, placeholder="All")
     with cols[1]:
-        markets = st.multiselect("🌍 Country", options=markets_avail, key=market_key)
+        markets = st.multiselect("🌍 Country", options=markets_avail, key=market_key, placeholder="All")
     with cols[2]:
-        categories = st.multiselect("📦 Category", options=cats_avail, key=cat_key)
+        categories = st.multiselect("📦 Category", options=cats_avail, key=cat_key, placeholder="All")
     with cols[3]:
-        retailers = st.multiselect("🏪 Retailer", options=retailers_avail, key=retailer_key)
+        retailers = st.multiselect("🏪 Retailer", options=retailers_avail, key=retailer_key, placeholder="All")
     if has_price:
         with cols[4]:
-            price_ranges = st.multiselect("💰 Price Range", options=pr_avail, key=pr_key)
+            price_ranges = st.multiselect("💰 Price Range", options=pr_avail, key=pr_key, placeholder="All")
     else:
         price_ranges = []
 

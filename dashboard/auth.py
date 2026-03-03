@@ -13,11 +13,12 @@ import streamlit as st
 
 def require_password():
     """
-    Password gate — TEMPORARILY DISABLED for testing/deployment.
-    Re-enable by restoring the full implementation below.
+    Password gate. Configure password via:
+      - Streamlit Cloud: App Settings → Secrets → [auth] password = "..."
+      - Local: .streamlit/secrets.toml → [auth] password = "..."
+      - .env file: DASHBOARD_PASSWORD=...
+    If no password is configured the app runs open (local dev).
     """
-    return  # ← remove this line to re-enable the password gate
-
     # Get password from secrets or env
     password = None
     try:
